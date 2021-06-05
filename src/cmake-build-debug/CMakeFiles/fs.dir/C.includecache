@@ -1,0 +1,30 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/ross/Documents/3rd_Year/Practicals/OS/fs/src/fs.h
+stdlib.h
+-
+stdio.h
+-
+stdint.h
+-
+unistd.h
+-
+sys/fcntl.h
+-
+sys/mman.h
+-
+
+/home/ross/Documents/3rd_Year/Practicals/OS/fs/src/main.c
+stdio.h
+-
+string.h
+-
+fs.h
+/home/ross/Documents/3rd_Year/Practicals/OS/fs/src/fs.h
+
