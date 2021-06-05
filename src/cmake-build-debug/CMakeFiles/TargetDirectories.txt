@@ -1,3 +1,0 @@
-/home/ross/Documents/3rd_Year/Practicals/OS/fs/src/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/home/ross/Documents/3rd_Year/Practicals/OS/fs/src/cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/ross/Documents/3rd_Year/Practicals/OS/fs/src/cmake-build-debug/CMakeFiles/fs.dir
