@@ -1,0 +1,1 @@
+Want to use a text editor as part of the UI for the file system, when I want to write it's a lot easier to write in than the standard shell
