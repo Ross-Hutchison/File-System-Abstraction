@@ -14,21 +14,23 @@
 #define ERR -1
 #define TRUE 1
 #define FALSE 0
+#define FREE 0
+#define CHAIN_END 0xFF //255
 
 //fs creation definitions
 #define overwrite "w"
 #define append "a"
 
 //volume record definitions
-#define VOLUME_RECORD_SIZE 12    // size in bits of the volume record   (3 32 bit (4 bytes) values)
+#define VOLUME_RECORD_SIZE 12    // size in bytes of the volume record   (3 32 bit (4 bytes) values)
 #define IDENT 7     // used to identify the fs when checking it is mounted
-#define BLOCK_SIZE 25    // the size of each storage block
+#define BLOCK_SIZE 512    // the size of each storage block
 #define MAX_ENTRIES 3   // the maximum number of entries to be stored in the root (only) directory
 
 //fat table definitions
-#define FAT_TABLE_SIZE 10 // remember 0 and 255 are reserved (so 256 becomes 254)
-#define FIRST_FAT_INDEX 0  //index of first non-reserved FAT index (technically 1 but that messes up the array)
-#define LAST_FAT_INDEX (FAT_TABLE_SIZE - 1) //index of last non-reserved FAT index
+#define FAT_TABLE_SIZE 256 // remember 0 and 255 are reserved 
+#define FIRST_FAT_INDEX 1  //index of first non-reserved FAT index (technically 1 but that messes up the array)
+#define LAST_FAT_INDEX (FAT_TABLE_SIZE - 2) //index of last non-reserved FAT index
 
 //root directory definitions
 #define FILE_ENTRY_SIZE 36     //last value is 2bytes (16 bit) offset from 0 by 34 bytes

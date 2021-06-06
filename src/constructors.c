@@ -45,12 +45,14 @@ volumeBootRecord *new_VBR() {
 fatTable *new_FAT() {
     fatTable *this = calloc(1, FAT_TABLE_SIZE);
 
-    //set up the values of an empty fat table
-    this->table[0] = '\0'; //the number 0 represents the reserved block (0 != '0)
+    this->table[0] = CHAIN_END;
+    //set up the values of an empty fat table, excludes reserved indexes
     for(int i = FIRST_FAT_INDEX; i <= LAST_FAT_INDEX; i++) {
-        this->table[i] = '0';   //character '0' represents a free space
+        this->table[i] = FREE;
     }
-    this->nextFreeSlot = -1; // cannot be sure if a loaded FAT has free space or not, start at error and update when loading
+    
+    this->table[FAT_TABLE_SIZE - 1] = CHAIN_END;
+    this->nextFreeSlot = CHAIN_END; // cannot be sure if a loaded FAT has free space or not, start at reserved block and update on load
     this->storing = 0;  //keeps track of the number of full indexes
 
     return this;

@@ -8,17 +8,10 @@ int main() {
     if(mount_fs(store) == ERR) return ERR;
 
     int fd1 = fs_create("file1");
-    int fd2 = fs_create("file2");
 
-    int test1 = 12;
-    char test2[] = {'a', 'b', 'c', 'd'};
-    char *test3 = "The Heart Relentless beats";
-    long test4 = 1234567891011121314;
+    char *test1 = "The Heart Relentless beats to protect the skin of the world we understand; it is the Principle of The Thunderskin, The Velvet, The Lionsmith, and The Sister-and-Witch, of life, preservation, protection, union, and the drumbeat and dance that must never cease. It is unstoppable in the face of adversity, and its followers are often characterized by relentless cheerfulness and obsessive determination";
 
-    fs_write(fd1, &test1, 2);
-    fs_write(fd2, test2, 4);
-    fs_write(fd1, test3, 26);
-    fs_write(fd2, &test4, 19);
+    fs_write(fd1, test1, 401);
 
     printDirectory();
     printDataRegion();
