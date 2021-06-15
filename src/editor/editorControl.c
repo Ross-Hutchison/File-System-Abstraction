@@ -2,9 +2,9 @@
 
 int main() {
     char active = TRUE;
-    setRaw();
     uint8_t count = 0;
     char res;
+    startup();
     while(active) {
         char inpt = '\0';
         res = read(STDIN_FILENO, &inpt, 1);

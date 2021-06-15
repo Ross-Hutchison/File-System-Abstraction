@@ -18,7 +18,7 @@
 #define MAX_LINE_L 10  //max number of characters per line (should be 196)
 #define MAX_LINE_NUM_SIZE 2 //number of digits of the max line length
 #define MAX_LINES 10 // max number of lines per file (should be much larger)
-
+#define MAX_LINES_NUM_SIZE 2 //number of digits of the max line length
 /*
     struct for representing a single line
     contains:
@@ -51,4 +51,7 @@ void setCanon();
 
 //function to deal with errors that require a shutdown
 void handleFatalError(char *msg);
+
+//function called when the editor starts
+void startup();
 #endif

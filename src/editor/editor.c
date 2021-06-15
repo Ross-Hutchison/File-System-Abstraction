@@ -75,3 +75,15 @@ void setRaw() {
 
     isRaw = TRUE;
 }
+
+void startup() {
+    setRaw();
+    for(int i = 0; i < MAX_LINES; i++) {
+        write(STDOUT_FILENO, "~", 1);   //write tilde
+        write(STDOUT_FILENO, "\x1b[1D", 4); //move one back
+        write(STDOUT_FILENO, "\x1b[1B", 4); //move one down
+    }
+    char *reset = calloc(3 + MAX_LINES_NUM_SIZE, sizeof(char));
+    sprintf(reset, "\x1b[%dA", MAX_LINES);
+    write(STDOUT_FILENO, reset, strlen(reset));
+}
