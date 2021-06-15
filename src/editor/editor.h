@@ -5,11 +5,18 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <termios.h>
+#include <unistd.h> //POSIX stuff
+#include <ctype.h> //good for checking for control chars etc.
+#include <string.h>
 
 //constants to use
 #define TRUE 1
 #define FALSE 0
+#define ERR -1
+#define SUC 0
 #define MAX_LINE_L 10  //max number of characters per line (should be 196)
+#define MAX_LINE_NUM_SIZE 2 //number of digits of the max line length
 #define MAX_LINES 10 // max number of lines per file (should be much larger)
 
 /*
@@ -36,4 +43,12 @@ typedef struct editor_t {
     uint16_t currentLine;
 } editor_t;
 
+//function for setting terminal to raw mode
+void setRaw();
+
+//function for resetting terminal to standard canonical mode
+void setCanon();
+
+//function to deal with errors that require a shutdown
+void handleFatalError(char *msg);
 #endif

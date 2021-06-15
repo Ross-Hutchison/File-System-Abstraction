@@ -10,11 +10,14 @@ check: moth clearView activate clean
 activate:
 	./moth
 
-moth: editorControl.o editor.h
-	${CC} ${LFLAGS} editorControl.o -o moth
+moth: editorControl.o editor.o
+	${CC} ${LFLAGS} editorControl.o editor.o -o moth
 
 editorControl.o: editorControl.c 
 	${CC} ${CFLAGS} editorControl.c -o editorControl.o
+
+editor.o: editor.c editor.h
+	${CC} ${CFLAGS} editor.c -o editor.o
 
 halfClean:
 	rm -r *.o
