@@ -15,10 +15,8 @@
 #define FALSE 0
 #define ERR -1
 #define SUC 0
-#define MAX_LINE_L 10  //max number of characters per line (should be 196)
-#define MAX_LINE_NUM_SIZE 2 //number of digits of the max line length
-#define MAX_LINES 10 // max number of lines per file (should be much larger)
-#define MAX_LINES_NUM_SIZE 2 //number of digits of the max line length
+#define MAX_LINE_L_DIGITS 2
+#define MAX_LINES_DIGITS 2 //number of digits of the max line length
 /*
     struct for representing a single line
     contains:
@@ -26,7 +24,7 @@
         an unsigned 8 bit int for storing the current length (allows more than max length so enough)
 */
 typedef struct line_t {
-    char text[MAX_LINE_L];
+    char *text;
     uint8_t len;
 }line_t;
 
@@ -41,6 +39,8 @@ typedef struct editor_t {
     line_t *lines;
     uint8_t currentChar;
     uint16_t currentLine;
+    uint8_t lineLength;
+    uint16_t maxLines;
 } editor_t;
 
 //function for setting terminal to raw mode
@@ -53,5 +53,24 @@ void setCanon();
 void handleFatalError(char *msg);
 
 //function called when the editor starts
-void startup();
+void startup(editor_t *editor);
+
+//constructor for a new editor struct
+editor_t *new_editor(uint8_t lineLength, uint16_t maxLines); 
+
+//Directional functions for the terminal cursor, includes editor for input checks
+void cursorLeft(editor_t *editor, uint8_t distance);
+void cursorRight(editor_t *editor, uint8_t distance);
+void cursorUp(editor_t *editor, uint16_t distance);
+void cursorDown(editor_t *editor, uint16_t distance);
+
+//function for writing a char to output
+void writeChar(editor_t *editor, char inpt);
+
+//function that clears the current line
+void clearLine(editor_t *editor);
+
+//function that clears the whole editor
+void clearWhole(editor_t *editor);
+
 #endif
