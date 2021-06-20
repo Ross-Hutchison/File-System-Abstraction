@@ -8,11 +8,11 @@ int main() {
         char inpt = '\0';
         res = read(STDIN_FILENO, &inpt, 1);
         if(res > 0) {
-            if(inpt == '.') {
+            if(inpt == CTRL_CHAR('}')) {
                 clearWhole();
                 break;
             }
-            else if(inpt == ',') clearLine();
+            else if(inpt == '{') clearLine();
             else writeChar(inpt);
         }
     }

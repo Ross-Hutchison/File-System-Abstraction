@@ -163,6 +163,7 @@ void clearWhole() {
 void writeChar(char inpt) {
     if(!state.started) return;
     write(STDOUT_FILENO, &inpt, 1);
+    // fprintf(stdout, "%d\n", inpt);
     state.editor->currentChar++;
     if(state.editor->currentChar == state.editor->lineLength) {
         write(STDOUT_FILENO, "\n", 1);
@@ -236,7 +237,7 @@ void setRaw() {
     ctrl.c_lflag &= ~(ECHO|ICANON|ISIG|IEXTEN);
     if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &ctrl) == ERR) handleFatalError("setRAW - Could not set local flags");
 
-    ctrl.c_iflag &= ~(IXON|ICRNL|BRKINT|ISTRIP|INPCK);
+    ctrl.c_iflag &= ~(IXON|IXOFF|ICRNL|BRKINT|ISTRIP|INPCK);
     if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &ctrl) == ERR) handleFatalError("setRAW - Could not set input flags");
 
     ctrl.c_oflag &= ~(OPOST);
