@@ -2,19 +2,18 @@
 
 int main() {
     char res;
-    editor_t *editor = new_editor(10,10);
-    startup(editor);
+    startup(10, 10);
 
     while(TRUE) {
         char inpt = '\0';
         res = read(STDIN_FILENO, &inpt, 1);
         if(res > 0) {
             if(inpt == '.') {
-                clearWhole(editor);
+                clearWhole();
                 break;
             }
-            else if(inpt == ',') clearLine(editor);
-            else writeChar(editor, inpt);
+            else if(inpt == ',') clearLine();
+            else writeChar(inpt);
         }
     }
     return 0;

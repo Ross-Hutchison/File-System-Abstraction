@@ -53,24 +53,24 @@ void setCanon();
 void handleFatalError(char *msg);
 
 //function called when the editor starts
-void startup(editor_t *editor);
+void startup(uint8_t lineLength, uint16_t maxLines);
 
 //constructor for a new editor struct
 editor_t *new_editor(uint8_t lineLength, uint16_t maxLines); 
 
 //Directional functions for the terminal cursor, includes editor for input checks
-void cursorLeft(editor_t *editor, uint8_t distance);
-void cursorRight(editor_t *editor, uint8_t distance);
-void cursorUp(editor_t *editor, uint16_t distance);
-void cursorDown(editor_t *editor, uint16_t distance);
+void cursorLeft(uint8_t distance);
+void cursorRight(uint8_t distance);
+void cursorUp(uint16_t distance);
+void cursorDown(uint16_t distance);
 
 //function for writing a char to output
-void writeChar(editor_t *editor, char inpt);
+void writeChar(char inpt);
 
 //function that clears the current line
-void clearLine(editor_t *editor);
+void clearLine();
 
 //function that clears the whole editor
-void clearWhole(editor_t *editor);
+void clearWhole();
 
 #endif
