@@ -157,29 +157,48 @@ void clearWhole() {
 /*
     Function for writing with the editor
 
-    takes in the editor and input and writes that output to the 
-    screen, before updating the editor state
+    Takes in the character that is being written and 
+    after making sure the system has started will write the 
+    character to output before saving it in the in-memory storage and 
+    updating the current character and if needed line
 */
 void writeChar(char inpt) {
     if(!state.started) return;
     write(STDOUT_FILENO, &inpt, 1);
-    // fprintf(stdout, "%d\n", inpt);
+    // fprintf(stdout, "%d\n", inpt);   //debug print
+
+    uint8_t curChar = state.editor->currentChar;
+    uint16_t curLine = state.editor->currentLine;
+    state.editor->lines[curLine].text[curChar] = inpt;
     state.editor->currentChar++;
     if(state.editor->currentChar == state.editor->lineLength) {
-        write(STDOUT_FILENO, "\n", 1);
+        cursorDown(1);
         cursorLeft(state.editor->lineLength);
+        // char *outp = calloc(curChar+2, sizeof(char));    //debug print
+        // snprintf(outp, curChar+2, "%s", state.editor->lines[curLine].text);
+        // write(STDOUT_FILENO, outp, curChar+2);
         state.editor->currentLine++;
         state.editor->currentChar = 0;
     }
 }
 
+/*
+    Constructor fn for editor
+    takes in the line length and number of lines 
+    then uses this to initialise these and set the current char and line values
+    then it allocates memory for the array of lines and for each line will
+    assign memory for the internal string
+*/
 editor_t *new_editor(uint8_t lineLength, uint16_t maxLines) {
-    editor_t *this = calloc(1, sizeof(editor_t));
+    editor_t *this = calloc(1, sizeof(struct editor_t));
     this->currentChar = 0;
     this->currentLine = 0;
     this->lineLength = lineLength;
     this->maxLines = maxLines;
-    this->lines = calloc(maxLines, sizeof(line_t));
+    this->lines = (line_t*)calloc(maxLines, sizeof(struct line_t));
+    for(int i = 0; i < maxLines; i++) {
+        this->lines[i].text = (char*)calloc(lineLength, sizeof(char));
+    }
 
     return this;
 }
