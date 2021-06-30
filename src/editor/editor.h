@@ -18,6 +18,9 @@
 #define MAX_LINE_L_DIGITS 2
 #define MAX_LINES_DIGITS 2 //number of digits of the max line length
 #define CTRL_CHAR(c) ((c) & 0x1f) //Not mine - https://viewsourcecode.org/snaptoken/kilo/03.rawInputAndOutput.html
+#define MAX_CTRL_SEQ 3 //maximum length of handled control sequence - https://www.encyclopedia.com/computing/dictionaries-thesauruses-pictures-and-press-releases/control-sequence
+//Control Sequences
+#define ESC_CHAR '\x1b'
 /*
     struct for representing a single line
     contains:
@@ -58,6 +61,7 @@ void startup(uint8_t lineLength, uint16_t maxLines);
 
 //constructor for a new editor struct
 editor_t *new_editor(uint8_t lineLength, uint16_t maxLines); 
+void free_editor(editor_t *toFree);
 
 //Directional functions for the terminal cursor, includes editor for input checks
 void cursorLeft(uint8_t distance);

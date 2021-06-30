@@ -52,9 +52,9 @@ void cursorRight(uint8_t distance) {
     if(!state.started) return;
     int bytes = 4 + MAX_LINE_L_DIGITS;
     char *move = calloc(bytes, sizeof(char));
-    int tillEnd = state.editor->lineLength -state.editor->currentChar;
+    int tillEnd = state.editor->lineLength - state.editor->currentChar;
 
-    if(distance < tillEnd) {
+    if(distance <= tillEnd) {
         snprintf(move, bytes, "\x1b[%dC", distance);
         state.editor->currentChar += distance;
     }
@@ -142,8 +142,8 @@ void clearLine() {
 */
 void clearWhole() {
     if(!state.started) return;
-    int backBytes = 3 + MAX_LINE_L_DIGITS;
-    int upBytes = 3 + MAX_LINES_DIGITS;
+    int backBytes = 4 + MAX_LINE_L_DIGITS;
+    int upBytes = 4 + MAX_LINES_DIGITS;
     char *back = calloc(backBytes, sizeof(char));
     char *up = calloc(upBytes, sizeof(char));
 
@@ -152,26 +152,26 @@ void clearWhole() {
 
     write(STDOUT_FILENO, back, backBytes);
     write(STDOUT_FILENO, up, upBytes);
+
+    free(back);
+    free(up);
 }
 
 /*
     Function for writing with the editor
 
-    Takes in the character that is being written and 
-    after making sure the system has started will write the 
-    character to output before saving it in the in-memory storage and 
-    updating the current character and if needed line
+    Takes in the character that is being written it writes it to output and the in memory structure
+    it then updates the editor state to represent this new character
 */
 void writeChar(char inpt) {
     if(!state.started) return;
     write(STDOUT_FILENO, &inpt, 1);
-    // fprintf(stdout, "%d\n", inpt);   //debug print
-
+    printf(" wrote to %d\n", state.editor->currentChar);
     uint8_t curChar = state.editor->currentChar;
     uint16_t curLine = state.editor->currentLine;
     state.editor->lines[curLine].text[curChar] = inpt;
     state.editor->currentChar++;
-    if(state.editor->currentChar == state.editor->lineLength) {
+    if(state.editor->currentChar >= state.editor->lineLength) {
         cursorDown(1);
         cursorLeft(state.editor->lineLength);
         // char *outp = calloc(curChar+2, sizeof(char));    //debug print
@@ -216,11 +216,31 @@ void setCanon() {
 }
 
 /*
+    Function for freeing a line
+    both the line pointer and it's text are calloced so must be freed 
+*/
+void free_line(line_t toFree) {
+    free(toFree.text);
+}
+
+/*
+    Function for freeing an editor struct and it's attached lines 
+*/
+void free_editor(editor_t *toFree) {
+    for(int i = 0; i < toFree->maxLines; i++) {
+        free_line(toFree->lines[i]);
+    }
+    free(toFree->lines);
+    free(toFree);
+}
+
+/*
     Function for performing a proper shutdown of the terminal
     resets the shell to canonical mode then clears the terminal contents
 */
 void shutdown() {
     if(!state.started) return;
+    free_editor(state.editor);
     setCanon();
     state.started = FALSE;
     write(STDOUT_FILENO, "\x1b[2J", 4);
@@ -283,10 +303,10 @@ void startup(uint8_t lineLength, uint16_t maxLines) {
     state.isRaw = FALSE;
     state.editor = new_editor(lineLength, maxLines);
     setRaw();
-    for(int i = 0; i < state.editor->maxLines; i++) {
-        writeChar('~');    //write tilde to screen
-        cursorLeft(1); //move one back
-        cursorDown(1); //move one down
-    }
-    cursorUp(state.editor->maxLines);
+    // for(int i = 0; i < state.editor->maxLines; i++) {
+    //     writeChar('~');    //write tilde to screen
+    //     cursorLeft(1); //move one back
+    //     cursorDown(1); //move one down
+    // }
+    // cursorUp(state.editor->maxLines);
 }

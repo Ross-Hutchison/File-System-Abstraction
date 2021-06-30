@@ -4,15 +4,41 @@ int main() {
     char res;
     startup(10, 10);
 
-    while(TRUE) {
+    while(TRUE) {   //replace with poll
         char inpt = '\0';
         res = read(STDIN_FILENO, &inpt, 1);
         if(res > 0) {
+            // printf("%d\n", inpt);   //DEBGUG PRINT
             if(inpt == CTRL_CHAR(']')) {
                 clearWhole();
                 break;
             }
-            else if(inpt == CTRL_CHAR('[')) clearLine();
+            else if(inpt == CTRL_CHAR('[')) {
+                clearLine();
+            }
+            if(inpt == ESC_CHAR) {
+                char second;
+                char third;
+                if(read(STDIN_FILENO, &second, 1) <= 0) writeChar(inpt);
+                if(read(STDIN_FILENO, &third, 1) <= 0) writeChar(inpt);
+
+                if(second == '[') {
+                    switch(third) {
+                        case 'A':
+                            cursorUp(1);
+                            break;
+                        case 'B':
+                            cursorDown(1);
+                            break;
+                        case 'C':
+                            cursorRight(1);
+                            break;
+                        case 'D':
+                            cursorLeft(1);
+                            break;
+                    }
+                }
+            }
             else writeChar(inpt);
         }
     }
