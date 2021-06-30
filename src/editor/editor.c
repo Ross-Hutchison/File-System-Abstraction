@@ -166,7 +166,7 @@ void clearWhole() {
 void writeChar(char inpt) {
     if(!state.started) return;
     write(STDOUT_FILENO, &inpt, 1);
-    printf(" wrote to %d\n", state.editor->currentChar);
+    // printf(" wrote to %d\n", state.editor->currentChar);
     uint8_t curChar = state.editor->currentChar;
     uint16_t curLine = state.editor->currentLine;
     state.editor->lines[curLine].text[curChar] = inpt;
