@@ -68,6 +68,7 @@ void cursorLeft(uint8_t distance);
 void cursorRight(uint8_t distance);
 void cursorUp(uint16_t distance);
 void cursorDown(uint16_t distance);
+void toStart();
 
 //function for writing a char to output
 void writeChar(char inpt);

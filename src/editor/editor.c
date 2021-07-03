@@ -23,101 +23,86 @@ void handleFatalError(char *msg) {
 */
 void cursorLeft(uint8_t distance) {
     if(!state.started) return;
-    int bytes = 4 + MAX_LINE_L_DIGITS;
-    char *move = calloc(bytes, sizeof(char));
-    if(distance < state.editor->currentChar) {
+    if(state.editor->currentChar > 0 && distance <= state.editor->currentChar) {
+        int bytes = 4 + MAX_LINE_L_DIGITS;
+        char *move = calloc(bytes, sizeof(char));
         snprintf(move, bytes, "\x1b[%dD", distance);
-        state.editor->currentChar -= distance;
-    }
-    else {
-        snprintf(move, bytes, "\x1b[%dD", state.editor->currentChar);
-        state.editor->currentChar = 0;
-    }
 
-    write(STDIN_FILENO, move, bytes);
-    free(move);
+        state.editor->currentChar -= distance;
+        write(STDIN_FILENO, move, bytes);
+        free(move);
+    }
 }
 
 /*
     Function for moving the cursor right by a given distance
     takes in the editor to update it and perform checks
 
-    Allocates enough memory for the ANSI string 
-    then finds the distance from the current character to the end of the line
-    if the distance to travel is less than this then travel that distance
-    otherwise move that difference to the end of the line
-    update the editor's current character respectively
+    Checks that there is a non-zero distance to the end of the line 
+    and that the distance input is at most equal to this distance
+    This means the cursot cannot be moved past the end of a line
+    It then allocates enough memory for the ANSI string 
+    and prints it moving the cursor before updating the state and 
+    freeing the allocated string 
 */
 void cursorRight(uint8_t distance) {
     if(!state.started) return;
-    int bytes = 4 + MAX_LINE_L_DIGITS;
-    char *move = calloc(bytes, sizeof(char));
-    int tillEnd = state.editor->lineLength - state.editor->currentChar;
+    int tillEnd = (state.editor->lineLength - 1) - state.editor->currentChar;
 
-    if(distance <= tillEnd) {
+    if(tillEnd > 0 && distance <= tillEnd) {
+        int bytes = 4 + MAX_LINE_L_DIGITS;
+        char *move = calloc(bytes, sizeof(char));
         snprintf(move, bytes, "\x1b[%dC", distance);
+
         state.editor->currentChar += distance;
+        write(STDIN_FILENO, move, bytes);
+        free(move);
     }
-    else {
-        snprintf(move, bytes, "\x1b[%dC", tillEnd);
-        state.editor->currentChar = state.editor->lineLength;
-    }
-    write(STDIN_FILENO, move, bytes);
-    free(move);
 }
 
 /*
     Function for moving the cursor up by some number of rows
     takes in the editor to update it and perform checks
 
-    Allocates enough memory for the ANSI string 
-    then checks the distance between the current line and the first line (0) 
-    if this is less than the distance moves to the first line, otherwise
-    moves that distance up 
+    Checks that there is a non-zero distance between the current line and the start of the 
+    text writing space, if there is and the distance the cursor is to be moved by is within that 
+    amount of space then moves the cusor using an ANSI string before updating editor state
 */
 void cursorUp(uint16_t distance) {
     if(!state.started) return;
-    int bytes = 4 + MAX_LINE_L_DIGITS;
-    char *move = calloc(bytes, sizeof(char));
     
-    if(distance < state.editor->currentLine) {
+    if(state.editor->currentLine > 0 && distance <= state.editor->currentLine) {
+        int bytes = 4 + MAX_LINE_L_DIGITS;
+        char *move = calloc(bytes, sizeof(char));
         snprintf(move, bytes, "\x1b[%dA", distance);
-        state.editor->currentLine -= distance;
-    }
-    else {
-        snprintf(move, bytes, "\x1b[%dA", state.editor->currentLine);
-        state.editor->currentLine = 0;
-    }
 
-    write(STDIN_FILENO, move, bytes);
-    free(move);
+        state.editor->currentLine -= distance;
+        write(STDIN_FILENO, move, bytes);
+        free(move);
+    }
 }
 
 /*
     Function for moving the cursor down by some number of rows
     takes in the editor to update it and perform checks
 
-    Allocates enough memory for the ANSI string 
-    then checks the distance between the current line and the last line 
-    if this is less than the distance moves to the last line, otherwise
-    moves that distance down 
+    Checks that there is a non-zero distance between the current line and the end of the 
+    text writing space, if there is and the distance the cursor is to be moved by is within that 
+    amount of space then moves the cusor with an ANSI string before updating editor state 
 */
 void cursorDown(uint16_t distance) {
     if(!state.started) return;
-    int bytes = 4 + MAX_LINE_L_DIGITS;
-    char *move = calloc(bytes, sizeof(char));
     int toBottom = state.editor->maxLines - state.editor->currentLine;
 
-    if(distance < toBottom) {
+    if(toBottom > 0 && distance <= toBottom) {
+        int bytes = 4 + MAX_LINE_L_DIGITS;
+        char *move = calloc(bytes, sizeof(char));
         snprintf(move, bytes, "\x1b[%dB", distance);
+
         state.editor->currentLine += distance;
+        write(STDIN_FILENO, move, bytes);
+        free(move);
     }
-    else {
-        snprintf(move, bytes, "\x1b[%dB", toBottom);
-        state.editor->currentLine += toBottom;
-    }
-    write(STDIN_FILENO, move, bytes);
-    free(move);
 }
 
 /*
@@ -135,27 +120,26 @@ void clearLine() {
 }
 
 /*
-    Function that clears the whole editor display
+    Function that returns the cursor to the start of the text section
+*/
+void toStart() {
+    if(!state.started) return;
+    cursorLeft(state.editor->currentChar);
+    cursorUp(state.editor->currentLine);
+}
 
-    moves the terminal back to the topmost corner 
+/*
+    Function that clears the whole terminal
+    
+    Moves the terminal back to the topmost corner 
     then clears from this point to the end
 */
 void clearWhole() {
-    if(!state.started) return;
-    int backBytes = 4 + MAX_LINE_L_DIGITS;
-    int upBytes = 4 + MAX_LINES_DIGITS;
-    char *back = calloc(backBytes, sizeof(char));
-    char *up = calloc(upBytes, sizeof(char));
-
-    snprintf(back, backBytes, "\x1b[%dD", state.editor->currentChar);
-    snprintf(up, upBytes, "\x1b[%dA", state.editor->currentLine);
-
-    write(STDOUT_FILENO, back, backBytes);
-    write(STDOUT_FILENO, up, upBytes);
-
-    free(back);
-    free(up);
+    toStart();
+    write(STDOUT_FILENO, "\x1b[2J", 4);
 }
+
+
 
 /*
     Function for writing with the editor
@@ -166,7 +150,6 @@ void clearWhole() {
 void writeChar(char inpt) {
     if(!state.started) return;
     write(STDOUT_FILENO, &inpt, 1);
-    // printf(" wrote to %d\n", state.editor->currentChar);
     uint8_t curChar = state.editor->currentChar;
     uint16_t curLine = state.editor->currentLine;
     state.editor->lines[curLine].text[curChar] = inpt;
@@ -174,9 +157,6 @@ void writeChar(char inpt) {
     if(state.editor->currentChar >= state.editor->lineLength) {
         cursorDown(1);
         cursorLeft(state.editor->lineLength);
-        // char *outp = calloc(curChar+2, sizeof(char));    //debug print
-        // snprintf(outp, curChar+2, "%s", state.editor->lines[curLine].text);
-        // write(STDOUT_FILENO, outp, curChar+2);
         state.editor->currentLine++;
         state.editor->currentChar = 0;
     }
@@ -243,7 +223,7 @@ void shutdown() {
     free_editor(state.editor);
     setCanon();
     state.started = FALSE;
-    write(STDOUT_FILENO, "\x1b[2J", 4);
+    clearWhole();
 }
 
 /*

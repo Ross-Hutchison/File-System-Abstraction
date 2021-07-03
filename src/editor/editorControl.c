@@ -9,14 +9,11 @@ int main() {
         res = read(STDIN_FILENO, &inpt, 1);
         if(res > 0) {
             // printf("%c\n", inpt);   //DEBGUG PRINT
-            if(inpt == CTRL_CHAR(']')) {
-                clearWhole();
-                break;
-            }
+            if(inpt == CTRL_CHAR(']')) break;
             else if(inpt == ESC_CHAR) {
                 char second;
                 char third;
-                if(read(STDIN_FILENO, &second, 1) <= 0) clearLine(inpt);
+                if(read(STDIN_FILENO, &second, 1) <= 0) clearWhole();
                 else if(read(STDIN_FILENO, &third, 1) <= 0) clearLine(inpt);
                 else if(second == '[') {
                     switch(third) {
