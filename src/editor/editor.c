@@ -92,7 +92,7 @@ void cursorUp(uint16_t distance) {
 */
 void cursorDown(uint16_t distance) {
     if(!state.started) return;
-    int toBottom = state.editor->maxLines - state.editor->currentLine;
+    int toBottom = (state.editor->maxLines - 1) - state.editor->currentLine;
 
     if(toBottom > 0 && distance <= toBottom) {
         int bytes = 4 + MAX_LINE_L_DIGITS;
@@ -139,8 +139,6 @@ void clearWhole() {
     write(STDOUT_FILENO, "\x1b[2J", 4);
 }
 
-
-
 /*
     Function for writing with the editor
 
@@ -149,16 +147,19 @@ void clearWhole() {
 */
 void writeChar(char inpt) {
     if(!state.started) return;
-    write(STDOUT_FILENO, &inpt, 1);
-    uint8_t curChar = state.editor->currentChar;
-    uint16_t curLine = state.editor->currentLine;
-    state.editor->lines[curLine].text[curChar] = inpt;
-    state.editor->currentChar++;
+    if(state.editor->currentChar != state.editor->lineLength) {
+        write(STDOUT_FILENO, &inpt, 1);
+        uint8_t curChar = state.editor->currentChar;
+        uint16_t curLine = state.editor->currentLine;
+        state.editor->lines[curLine].text[curChar] = inpt;
+        state.editor->currentChar++;
+    }
     if(state.editor->currentChar >= state.editor->lineLength) {
-        cursorDown(1);
-        cursorLeft(state.editor->lineLength);
-        state.editor->currentLine++;
-        state.editor->currentChar = 0;
+        if(state.editor->currentLine != state.editor->maxLines - 1) {
+            cursorDown(1);
+            cursorLeft(state.editor->lineLength);
+        }
+        else cursorLeft(1);
     }
 }
 
@@ -283,10 +284,10 @@ void startup(uint8_t lineLength, uint16_t maxLines) {
     state.isRaw = FALSE;
     state.editor = new_editor(lineLength, maxLines);
     setRaw();
-    // for(int i = 0; i < state.editor->maxLines; i++) {
-    //     writeChar('~');    //write tilde to screen
-    //     cursorLeft(1); //move one back
-    //     cursorDown(1); //move one down
-    // }
-    // cursorUp(state.editor->maxLines);
+    for(int i = 0; i < state.editor->maxLines; i++) {
+        writeChar('~');    //write tilde to screen
+        cursorLeft(1); //move one back
+        cursorDown(1); //move one down
+    }
+    cursorUp(state.editor->maxLines - 1);
 }

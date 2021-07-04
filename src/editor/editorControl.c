@@ -13,8 +13,8 @@ int main() {
             else if(inpt == ESC_CHAR) {
                 char second;
                 char third;
-                if(read(STDIN_FILENO, &second, 1) <= 0) clearWhole();
-                else if(read(STDIN_FILENO, &third, 1) <= 0) clearLine(inpt);
+                if(read(STDIN_FILENO, &second, 1) <= 0) clearLine();
+                else if(read(STDIN_FILENO, &third, 1) <= 0) clearLine();
                 else if(second == '[') {
                     switch(third) {
                         case 'A':
