@@ -7,8 +7,13 @@ all: moth halfClean
 
 check: moth clearView activate clean
 
-mem: all clearView
-	valgrind --log-file="test.c" --leak-check=full --track-origins=yes --show-leak-kinds=all -s ./moth
+mem: all clearView memoryCheck clearView memCheckOutp clean 
+
+memoryCheck:
+	valgrind --log-file="test.txt" --leak-check=full --track-origins=yes --show-leak-kinds=all -s ./moth
+
+memCheckOutp:
+	cat test.txt
 
 activate:
 	./moth
@@ -26,7 +31,7 @@ halfClean:
 	rm -r *.o
 
 clean:
-	rm -r *.o moth
+	rm -r *.o moth test.txt
 
 clearView:
 	clear

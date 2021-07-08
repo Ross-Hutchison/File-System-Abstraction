@@ -106,38 +106,22 @@ void cursorDown(uint16_t distance) {
 }
 
 /*
-    Function that clears the current line and moves back to the start of it
+    Function for moving the cursor forwards by a character if this is possible
 
-    moves the cursor back by the number of characters
-    then clears from that point to the end of the current line
-    and resets the editor state
+    Checks that there is another charachter in the current line and if so uses cursorRight
+    other conditions applied are:
+
+
 */
-void clearLine() {
-    if(!state.started) return;
-     cursorLeft(state.editor->currentChar);
-     write(STDOUT_FILENO, "\x1b[2K", 4);
-     state.editor->currentChar = 0;
+void nextChar() {
+    int curChar = state.editor->currentChar;
+    int curLine = state.editor->currentLine;
+    int lineUsed = state.editor->lines[curLine].len - 1; //remove 1 to make it index
+    if(curChar <= lineUsed) {
+        cursorRight(1);
+    }
 }
 
-/*
-    Function that returns the cursor to the start of the text section
-*/
-void toStart() {
-    if(!state.started) return;
-    cursorLeft(state.editor->currentChar);
-    cursorUp(state.editor->currentLine);
-}
-
-/*
-    Function that clears the whole terminal
-    
-    Moves the terminal back to the topmost corner 
-    then clears from this point to the end
-*/
-void clearWhole() {
-    toStart();
-    write(STDOUT_FILENO, "\x1b[2J", 4);
-}
 
 /*
     Function for writing with the editor
@@ -152,21 +136,36 @@ void writeChar(char inpt) {
         uint8_t curChar = state.editor->currentChar;
         uint16_t curLine = state.editor->currentLine;
         state.editor->lines[curLine].text[curChar] = inpt;
+        if(state.editor->currentChar >= state.editor->lines[curLine].len) state.editor->lines[curLine].len++; //if not overwriting a char increase length
         state.editor->currentChar++;
     }
     if(state.editor->currentChar >= state.editor->lineLength) {
         if(state.editor->currentLine != state.editor->maxLines - 1) {
             cursorDown(1);
             cursorLeft(state.editor->lineLength);
+            char blank = ' ';
+            if(state.editor->lines[state.editor->currentLine].len == 0) {
+                write(STDOUT_FILENO, &blank, 1);
+                write(STDOUT_FILENO, "\x1b[1D", 4);
+            }
         }
         else cursorLeft(1);
     }
 }
 
 /*
+    Function that moves part of the current line to the next line 
+    if there is space to do so
+*/
+void nextLine() {
+    printf("AAAAAAAAAA\n");
+    
+}
+
+/*
     Constructor fn for editor
     takes in the line length and number of lines 
-    then uses this to initialise these and set the current char and line values
+    then uses this to initialise these and set the current char, line, and freeLines values 
     then it allocates memory for the array of lines and for each line will
     assign memory for the internal string
 */
@@ -176,6 +175,7 @@ editor_t *new_editor(uint8_t lineLength, uint16_t maxLines) {
     this->currentLine = 0;
     this->lineLength = lineLength;
     this->maxLines = maxLines;
+    this->freeLines = maxLines;
     this->lines = (line_t*)calloc(maxLines, sizeof(struct line_t));
     for(int i = 0; i < maxLines; i++) {
         this->lines[i].text = (char*)calloc(lineLength, sizeof(char));
@@ -216,15 +216,68 @@ void free_editor(editor_t *toFree) {
 }
 
 /*
+    Function that returns the cursor to the start of the text section
+*/
+void toStart() {
+    if(!state.started) return;
+    cursorLeft(state.editor->currentChar);
+    cursorUp(state.editor->currentLine);
+}
+
+/*
+    Function that is called as part of clearLine to 
+    reset the state related to the given line line
+
+    If the editor has started and a valid line has been given then 
+    use memset to reset the contents of the line and reset the length to 0
+*/
+int state_clearLine(uint16_t toClear) {
+    if(!state.started) return ERR;
+    else if(toClear < 0 || toClear > state.editor->maxLines) return ERR;
+    memset(state.editor->lines[toClear].text, 0x0, state.editor->lineLength);
+    state.editor->lines[toClear].len = 0;
+    return SUC;
+}
+
+/*
+    Function that clears the whole terminal
+    
+    Moves the terminal back to the topmost corner 
+    then clears from this point to the end
+    then calls the state_clearLine function on every line 
+    to reset the in memory struct
+*/
+void clearWhole() {
+    toStart();
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+    for(int i = 0; i < state.editor->maxLines; i++) state_clearLine(i); 
+}
+
+/*
+    Function that clears the current line and moves back to the start of it
+
+    moves the cursor back by the number of characters
+    then clears from that point to the end of the current line
+    and resets the editor state
+*/
+void clearLine() {
+    if(!state.started) return;
+     cursorLeft(state.editor->currentChar);
+     write(STDOUT_FILENO, "\x1b[2K", 4);
+     state.editor->currentChar = 0;
+     state_clearLine(state.editor->currentLine);
+}
+
+/*
     Function for performing a proper shutdown of the terminal
     resets the shell to canonical mode then clears the terminal contents
 */
 void shutdown() {
     if(!state.started) return;
-    free_editor(state.editor);
     setCanon();
     state.started = FALSE;
     clearWhole();
+    free_editor(state.editor);
 }
 
 /*
@@ -284,10 +337,14 @@ void startup(uint8_t lineLength, uint16_t maxLines) {
     state.isRaw = FALSE;
     state.editor = new_editor(lineLength, maxLines);
     setRaw();
+    char emptyLine = '~';
+    char blank = ' ';
     for(int i = 0; i < state.editor->maxLines; i++) {
-        writeChar('~');    //write tilde to screen
-        cursorLeft(1); //move one back
+        write(STDOUT_FILENO, &emptyLine, 1);
+        write(STDOUT_FILENO, "\x1b[1D", 4); //move one back, can't use cursorLeft since currentChar is not updated (not writing ~ to memory)
         cursorDown(1); //move one down
     }
     cursorUp(state.editor->maxLines - 1);
+    write(STDOUT_FILENO, &blank, 1);    //remove first ~
+    write(STDOUT_FILENO, "\x1b[1D", 4); //move one back, can't use cursorLeft since currentChar is not updated (not writing ~ to memory)
 }

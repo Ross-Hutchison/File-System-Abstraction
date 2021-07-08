@@ -18,9 +18,11 @@
 #define MAX_LINE_L_DIGITS 2
 #define MAX_LINES_DIGITS 2 //number of digits of the max line length
 #define CTRL_CHAR(c) ((c) & 0x1f) //Not mine - https://viewsourcecode.org/snaptoken/kilo/03.rawInputAndOutput.html
-#define MAX_CTRL_SEQ 3 //maximum length of handled control sequence - https://www.encyclopedia.com/computing/dictionaries-thesauruses-pictures-and-press-releases/control-sequence
-//Control Sequences
+
+//Control Sequences and keys
 #define ESC_CHAR '\x1b'
+#define CARRIAGE_RETURN 13
+
 /*
     struct for representing a single line
     contains:
@@ -42,18 +44,19 @@ typedef struct line_t {
 typedef struct editor_t {
     line_t *lines;
     uint8_t currentChar;
-    uint16_t currentLine;
     uint8_t lineLength;
+    uint16_t currentLine;
     uint16_t maxLines;
+    uint16_t freeLines;
 } editor_t;
 
-//function for setting terminal to raw mode
+//function for setting terminal to raw mode MAYBE REMOVE FROM HEADER, NOT TO BE CALLED BY NON_TERMINAL FILES
 void setRaw();
 
-//function for resetting terminal to standard canonical mode
+//function for resetting terminal to standard canonical mode MAYBE REMOVE FROM HEADER, NOT TO BE CALLED BY NON_TERMINAL FILES
 void setCanon();
 
-//function to deal with errors that require a shutdown
+//function to deal with errors that require a shutdown MAYBE REMOVE FROM HEADER, NOT TO BE CALLED BY NON_TERMINAL FILES
 void handleFatalError(char *msg);
 
 //function called when the editor starts
@@ -63,20 +66,29 @@ void startup(uint8_t lineLength, uint16_t maxLines);
 editor_t *new_editor(uint8_t lineLength, uint16_t maxLines); 
 void free_editor(editor_t *toFree);
 
-//Directional functions for the terminal cursor, includes editor for input checks
+//Directional functions for the terminal cursor, bounded by length of editor space MAYBE REMOVE FROM HEADER, NOT TO BE CALLED BY NON-TERMINAL FILES
 void cursorLeft(uint8_t distance);
 void cursorRight(uint8_t distance);
 void cursorUp(uint16_t distance);
 void cursorDown(uint16_t distance);
 void toStart();
 
-//function for writing a char to output
+//Directional functions for the terminal cursor, bounded by where characters are
+void nextChar();    //move to the next character in the current line or next line if at end of current and there is a next
+void previousChar(); //move to the previous character in the current line or the previous line if at the start of current and there is a previous
+void nextLine();    //move to the next line if there is one
+void previousLine();    //move to the previous line if there is one
+
+//function for writing a char to output 
 void writeChar(char inpt);
 
-//function that clears the current line
+//function that clears the current line 
 void clearLine();
 
 //function that clears the whole editor
 void clearWhole();
+
+//Function that shifts the cursor (and everythng from the currentChar onwards) to the next line if there is space
+void nextLine();
 
 #endif

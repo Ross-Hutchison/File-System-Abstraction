@@ -8,8 +8,11 @@ int main() {
         char inpt = '\0';
         res = read(STDIN_FILENO, &inpt, 1);
         if(res > 0) {
-            // printf("%c\n", inpt);   //DEBGUG PRINT
+            // printf("%c - %d\n", inpt, inpt);   //DEBGUG PRINT
             if(inpt == CTRL_CHAR(']')) break;
+            else if(inpt == CARRIAGE_RETURN) {
+                nextLine();
+            }
             else if(inpt == ESC_CHAR) {
                 char second;
                 char third;
@@ -24,7 +27,7 @@ int main() {
                             cursorDown(1);
                             break;
                         case 'C':
-                            cursorRight(1);
+                            nextChar();
                             break;
                         case 'D':
                             cursorLeft(1);
