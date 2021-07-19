@@ -3,7 +3,7 @@
 int main() {
     char res;
     startup(10, 10);
-
+    
     while(TRUE) {   //replace with poll
         char inpt = '\0';
         res = read(STDIN_FILENO, &inpt, 1);
@@ -21,16 +21,20 @@ int main() {
                 else if(second == '[') {
                     switch(third) {
                         case 'A':
-                            cursorUp(1);
+                            // cursorUp(1);
+                            previousLine();
                             break;
                         case 'B':
-                            cursorDown(1);
+                            // cursorDown(1);
+                            nextLine();
                             break;
                         case 'C':
+                        // cursorRight(1);
                             nextChar();
                             break;
                         case 'D':
-                            cursorLeft(1);
+                        // cursorLeft(1);
+                            previousChar();
                             break;
                     }
                 }

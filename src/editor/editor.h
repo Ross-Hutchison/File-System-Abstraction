@@ -15,6 +15,7 @@
 #define FALSE 0
 #define ERR -1
 #define SUC 0
+#define INV 1
 #define MAX_LINE_L_DIGITS 2
 #define MAX_LINES_DIGITS 2 //number of digits of the max line length
 #define CTRL_CHAR(c) ((c) & 0x1f) //Not mine - https://viewsourcecode.org/snaptoken/kilo/03.rawInputAndOutput.html
@@ -47,7 +48,9 @@ typedef struct editor_t {
     uint8_t lineLength;
     uint16_t currentLine;
     uint16_t maxLines;
-    uint16_t freeLines;
+    uint16_t inUse;
+    uint8_t cursorX;
+    uint16_t cursorY;
 } editor_t;
 
 //function for setting terminal to raw mode MAYBE REMOVE FROM HEADER, NOT TO BE CALLED BY NON_TERMINAL FILES
@@ -67,17 +70,18 @@ editor_t *new_editor(uint8_t lineLength, uint16_t maxLines);
 void free_editor(editor_t *toFree);
 
 //Directional functions for the terminal cursor, bounded by length of editor space MAYBE REMOVE FROM HEADER, NOT TO BE CALLED BY NON-TERMINAL FILES
-void cursorLeft(uint8_t distance);
-void cursorRight(uint8_t distance);
-void cursorUp(uint16_t distance);
-void cursorDown(uint16_t distance);
-void toStart();
+char cursorLeft(uint8_t distance);
+char cursorRight(uint8_t distance);
+char cursorUp(uint16_t distance);
+char cursorDown(uint16_t distance);
+char cursorTo(uint8_t x, uint16_t y);
+void toStart(); //REDUNDANT REMOVE WHEN CURSOR_TO IS COMP
 
 //Directional functions for the terminal cursor, bounded by where characters are
-void nextChar();    //move to the next character in the current line or next line if at end of current and there is a next
-void previousChar(); //move to the previous character in the current line or the previous line if at the start of current and there is a previous
-void nextLine();    //move to the next line if there is one
-void previousLine();    //move to the previous line if there is one
+char nextChar();    //move to the next character in the current line or next line if at end of current and there is a next
+char previousChar(); //move to the previous character in the current line or the previous line if at the start of current and there is a previous
+char nextLine();    //move to the next line if there is one
+char previousLine();    //move to the previous line if there is one
 
 //function for writing a char to output 
 void writeChar(char inpt);
@@ -87,8 +91,5 @@ void clearLine();
 
 //function that clears the whole editor
 void clearWhole();
-
-//Function that shifts the cursor (and everythng from the currentChar onwards) to the next line if there is space
-void nextLine();
 
 #endif

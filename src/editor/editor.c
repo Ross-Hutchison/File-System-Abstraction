@@ -21,17 +21,19 @@ void handleFatalError(char *msg) {
     then checks if it should move back part of or all of the line
     it performs this update and then modifies the ditor state
 */
-void cursorLeft(uint8_t distance) {
-    if(!state.started) return;
-    if(state.editor->currentChar > 0 && distance <= state.editor->currentChar) {
+char cursorLeft(uint8_t distance) {
+    if(!state.started || distance == 0) return INV;
+    if(state.editor->cursorX > 0 && distance <= state.editor->cursorX) {
         int bytes = 4 + MAX_LINE_L_DIGITS;
         char *move = calloc(bytes, sizeof(char));
         snprintf(move, bytes, "\x1b[%dD", distance);
 
-        state.editor->currentChar -= distance;
+        state.editor->cursorX -= distance;
         write(STDIN_FILENO, move, bytes);
         free(move);
+        return SUC;
     }
+    else return ERR;
 }
 
 /*
@@ -45,19 +47,21 @@ void cursorLeft(uint8_t distance) {
     and prints it moving the cursor before updating the state and 
     freeing the allocated string 
 */
-void cursorRight(uint8_t distance) {
-    if(!state.started) return;
-    int tillEnd = (state.editor->lineLength - 1) - state.editor->currentChar;
+char cursorRight(uint8_t distance) {
+    if(!state.started || distance == 0) return INV;
+    int tillEnd = (state.editor->lineLength - 1) - state.editor->cursorX;
 
     if(tillEnd > 0 && distance <= tillEnd) {
         int bytes = 4 + MAX_LINE_L_DIGITS;
         char *move = calloc(bytes, sizeof(char));
         snprintf(move, bytes, "\x1b[%dC", distance);
 
-        state.editor->currentChar += distance;
+        state.editor->cursorX += distance;
         write(STDIN_FILENO, move, bytes);
         free(move);
+        return SUC;
     }
+    else return ERR;
 }
 
 /*
@@ -68,18 +72,20 @@ void cursorRight(uint8_t distance) {
     text writing space, if there is and the distance the cursor is to be moved by is within that 
     amount of space then moves the cusor using an ANSI string before updating editor state
 */
-void cursorUp(uint16_t distance) {
-    if(!state.started) return;
+char cursorUp(uint16_t distance) {
+    if(!state.started || distance == 0) return INV;
     
-    if(state.editor->currentLine > 0 && distance <= state.editor->currentLine) {
+    if(state.editor->cursorY > 0 && distance <= state.editor->cursorY) {
         int bytes = 4 + MAX_LINE_L_DIGITS;
         char *move = calloc(bytes, sizeof(char));
         snprintf(move, bytes, "\x1b[%dA", distance);
 
-        state.editor->currentLine -= distance;
+        state.editor->cursorY -= distance;
         write(STDIN_FILENO, move, bytes);
         free(move);
+        return SUC;
     }
+    else return ERR;
 }
 
 /*
@@ -90,38 +96,243 @@ void cursorUp(uint16_t distance) {
     text writing space, if there is and the distance the cursor is to be moved by is within that 
     amount of space then moves the cusor with an ANSI string before updating editor state 
 */
-void cursorDown(uint16_t distance) {
-    if(!state.started) return;
-    int toBottom = (state.editor->maxLines - 1) - state.editor->currentLine;
+char cursorDown(uint16_t distance) {
+    if(!state.started || distance == 0) return INV;
+    int toBottom = (state.editor->maxLines - 1) - state.editor->cursorY;
 
-    if(toBottom > 0 && distance <= toBottom) {
+    if(distance > 0 && toBottom > 0 && distance <= toBottom) {
         int bytes = 4 + MAX_LINE_L_DIGITS;
         char *move = calloc(bytes, sizeof(char));
         snprintf(move, bytes, "\x1b[%dB", distance);
 
-        state.editor->currentLine += distance;
+        state.editor->cursorY += distance;
         write(STDIN_FILENO, move, bytes);
         free(move);
+        return SUC;
     }
+    else return ERR;
+}
+
+/*
+    Function that moves the cursor
+    to a specific (X,Y) without affecting the 
+    current line and character of the editor
+*/
+char cursorTo(uint8_t x, uint16_t y) {
+    int xDist = (x - state.editor->cursorX);
+    int yDist = (y - state.editor->cursorY);
+    char res;
+
+    if(xDist < 0) res = cursorLeft( (xDist * -1) );
+    else res = cursorRight(xDist);
+
+    if(res == ERR) handleFatalError("System has tried to move cursor out of bounds\n");
+
+    if(yDist < 0) res = cursorUp( (yDist * -1) );
+    else res = cursorDown(yDist);
+
+    if(res == ERR) handleFatalError("System has tried to move cursor out of bounds\n");
+
+    return SUC;
+}
+
+/*
+    Function that is called as part of clearLine to 
+    reset the state related to the given line line
+
+    If the editor has started and a valid line has been given then 
+    sets the length of that line to 0 meaning that it will be treated 
+    as a blank line
+*/
+int state_clearLine(uint16_t toClear) {
+    if(!state.started) return INV;
+    else if(toClear < 0 || toClear > state.editor->maxLines) return ERR;
+    // memset(state.editor->lines[toClear].text, '\0', state.editor->lines[toClear].len);
+    state.editor->lines[toClear].len = 0;
+    return SUC;
+}
+
+
+/*
+    Function that clears editor state for every line
+*/
+void state_clearWhole() {
+    for(int i = 0; i < state.editor->maxLines; i++) state_clearLine(i);
+}
+
+/*
+    Function that clears the whole terminal
+    
+    Moves the terminal back to the topmost corner 
+    then clears from this point to the end
+*/
+void clearWhole() {
+    cursorTo(0,0);
+    write(STDOUT_FILENO, "\x1b[0J", 4);
+}
+
+/*
+    Function that clears the current line and moves back to the start of it
+
+    moves the cursor back by the number of characters
+    then clears from that point to the end of the current line
+    and resets the editor state
+*/
+void clearLine() {
+    if(!state.started) return;
+     cursorLeft(state.editor->currentChar);
+     write(STDOUT_FILENO, "\x1b[2K", 4);
+     state.editor->currentChar = 0;
+     state_clearLine(state.editor->currentLine);
+}
+
+/*
+    Function which re-renders the terminal display 
+    clears the output which moves us back to the start of the text space 
+    then iterates over each in-memory line and prints it
+    then returns the cursor to where the last character was written.
+*/
+void rerenderOutput() {
+    clearWhole();
+    for(int i = 0; i < state.editor->maxLines; i++) {
+        cursorTo(0, i);
+        line_t current = state.editor->lines[i];
+        if(current.len > 0) {
+            write(STDOUT_FILENO, current.text, current.len);
+            state.editor->cursorX = current.len;
+        }
+        else if(i >= state.editor->inUse) {
+            write(STDOUT_FILENO, "~", 1);
+            state.editor->cursorX = 1;
+        }
+    }
+    cursorTo(state.editor->currentChar, state.editor->currentLine);
+}
+
+/*
+    Function that moves the cursor down by a line if this is possible
+
+    Checks that the next line is within the range of in-use lines (i.e. there is at least one more in-use line than the currentLine)
+    if so moves the cursor to that line
+    Then checks if that next line has enough characters present that the currentChar is within the range of used characters
+    If it does not it will determine the difference from the current character to the end of the line and move the cursor back that far
+    It will decrease the currentCharacter to be the next free space in the line, unless that would take it over the line
+*/
+char nextLine() {
+    int curLine = state.editor->currentLine;
+    if(curLine < state.editor->inUse - 1) { //line 0 and 1 line in use means no next, line 0 and 2 in use means next
+        cursorDown(1);
+        state.editor->currentLine++;
+
+        int newLen = state.editor->lines[curLine + 1].len;
+        int curChar = state.editor->currentChar;
+        if(newLen < curChar) {    //line not long enough to just move down
+            int gap = curChar - newLen;
+            cursorLeft(gap);
+            state.editor->currentChar -= gap;
+        }
+
+        return SUC;
+    }
+    else return ERR;
+}
+
+/*
+    Function for moving the cursor up to a previous line if this is possible
+*/
+char previousLine() {
+    int curLine = state.editor->currentLine;
+    if(curLine > 0) {
+        cursorUp(1);
+        state.editor->currentLine--;
+
+        int nextLen = state.editor->lines[curLine - 1].len;
+        int curChar = state.editor->currentChar;
+        if(nextLen < curChar) {    //line not long enough to just move down
+            int gap = curChar - nextLen;    //if on char 3 and next line is len 2 need to move to index 2 (spot after char at index 1)
+            cursorLeft(gap);
+            state.editor->currentChar -= gap; //currentChar becomes index of last char in new line
+        }
+
+        return SUC;
+    }
+    else return ERR;
 }
 
 /*
     Function for moving the cursor forwards by a character if this is possible
 
-    Checks that there is another charachter in the current line and if so uses cursorRight
-    other conditions applied are:
-
-
+    Checks the current charachter is not the last charachter in use in the line
+    If it is not, moves the cursor right and increases the currentCharacter
 */
-void nextChar() {
+char nextChar() {
     int curChar = state.editor->currentChar;
     int curLine = state.editor->currentLine;
-    int lineUsed = state.editor->lines[curLine].len - 1; //remove 1 to make it index
-    if(curChar <= lineUsed) {
-        cursorRight(1);
+    int lineUsed = state.editor->lines[curLine].len; //remove 1 for index, keep one so that it includes next free char
+
+    if(curChar == state.editor->lineLength - 1) {
+        if(nextLine() == SUC) {
+            cursorTo(0, state.editor->currentLine);
+            state.editor->currentChar = 0;
+            return SUC;
+        }
+        else return ERR;
     }
+    else if(curChar < lineUsed) {
+        cursorRight(1);
+        state.editor->currentChar++;
+        return SUC;
+    }
+    else return ERR;
 }
 
+/*
+    Function for moving the cursor backwards by a charachter if this is possible 
+
+    Checks that the current character is not at the start of a line 
+    If this is the case then moves the cursor back by 1 and decreases currentChar
+*/
+char previousChar() {
+    int curChar = state.editor->currentChar;
+    int curLine = state.editor->currentLine;
+    int len = state.editor->lines[curLine].len;
+    if(curChar > 0 && curChar <= len) {
+        cursorLeft(1);
+        state.editor->currentChar--;
+        return SUC;
+    }
+    else return ERR;
+}
+
+/*
+    Function for adding a new line (shift everythign below down and add to line below current) 
+
+    checks the number of lines in use 
+    if there are less used lines than available can add a new line
+    shift down (right in array terms) starting from the lowest in use line and moving back to currentLine + 1
+    reset output by clearing and re-printing 
+    make current line the newly "added" line
+*/
+void addLine() {
+    if(!state.started) return;
+    uint16_t using = state.editor->inUse;
+    uint16_t available = state.editor->maxLines - using;
+    if(available < 1) return;
+    else {
+        uint16_t curLine = state.editor->currentLine;
+        uint16_t lookingAt = curLine + 1;
+        uint16_t last = using - 1;  // - 1 to get index
+        for(int i = last; i > curLine; i--) {
+            strcpy(state.editor->lines[i + 1].text, state.editor->lines[i].text);
+            state.editor->lines[i + 1].len = strlen(state.editor->lines[i + 1].text);
+        }
+        state_clearLine(lookingAt);
+        state.editor->inUse++;
+        nextLine();
+        rerenderOutput();
+    }
+    
+}
 
 /*
     Function for writing with the editor
@@ -138,28 +349,24 @@ void writeChar(char inpt) {
         state.editor->lines[curLine].text[curChar] = inpt;
         if(state.editor->currentChar >= state.editor->lines[curLine].len) state.editor->lines[curLine].len++; //if not overwriting a char increase length
         state.editor->currentChar++;
+        state.editor->cursorX++;
     }
     if(state.editor->currentChar >= state.editor->lineLength) {
         if(state.editor->currentLine != state.editor->maxLines - 1) {
-            cursorDown(1);
-            cursorLeft(state.editor->lineLength);
-            char blank = ' ';
-            if(state.editor->lines[state.editor->currentLine].len == 0) {
-                write(STDOUT_FILENO, &blank, 1);
-                write(STDOUT_FILENO, "\x1b[1D", 4);
-            }
+            addLine();
+            // cursorDown(1);
+            // state.editor->currentLine++;
+            // cursorLeft(state.editor->lineLength);
+            // state.editor->currentChar -= state.editor->lineLength;
+            // char blank = ' ';
+            // if(state.editor->lines[state.editor->currentLine].len == 0) {
+            //     write(STDOUT_FILENO, &blank, 1);
+            //     write(STDOUT_FILENO, "\x1b[1D", 4);
+            // }
+            // if(state.editor->currentLine <= state.editor->inUse) state.editor->inUse++; //if currentLine +1 from new line equals the number in use then there's an extra line in use 
         }
-        else cursorLeft(1);
+        else nextChar();
     }
-}
-
-/*
-    Function that moves part of the current line to the next line 
-    if there is space to do so
-*/
-void nextLine() {
-    printf("AAAAAAAAAA\n");
-    
 }
 
 /*
@@ -173,9 +380,11 @@ editor_t *new_editor(uint8_t lineLength, uint16_t maxLines) {
     editor_t *this = calloc(1, sizeof(struct editor_t));
     this->currentChar = 0;
     this->currentLine = 0;
+    this->cursorX = 0;      //treat start of editor as (0,0) right as x++ and down as y++
+    this->cursorY = 0;  
     this->lineLength = lineLength;
     this->maxLines = maxLines;
-    this->freeLines = maxLines;
+    this->inUse = 1;
     this->lines = (line_t*)calloc(maxLines, sizeof(struct line_t));
     for(int i = 0; i < maxLines; i++) {
         this->lines[i].text = (char*)calloc(lineLength, sizeof(char));
@@ -216,67 +425,14 @@ void free_editor(editor_t *toFree) {
 }
 
 /*
-    Function that returns the cursor to the start of the text section
-*/
-void toStart() {
-    if(!state.started) return;
-    cursorLeft(state.editor->currentChar);
-    cursorUp(state.editor->currentLine);
-}
-
-/*
-    Function that is called as part of clearLine to 
-    reset the state related to the given line line
-
-    If the editor has started and a valid line has been given then 
-    use memset to reset the contents of the line and reset the length to 0
-*/
-int state_clearLine(uint16_t toClear) {
-    if(!state.started) return ERR;
-    else if(toClear < 0 || toClear > state.editor->maxLines) return ERR;
-    memset(state.editor->lines[toClear].text, 0x0, state.editor->lineLength);
-    state.editor->lines[toClear].len = 0;
-    return SUC;
-}
-
-/*
-    Function that clears the whole terminal
-    
-    Moves the terminal back to the topmost corner 
-    then clears from this point to the end
-    then calls the state_clearLine function on every line 
-    to reset the in memory struct
-*/
-void clearWhole() {
-    toStart();
-    write(STDOUT_FILENO, "\x1b[2J", 4);
-    for(int i = 0; i < state.editor->maxLines; i++) state_clearLine(i); 
-}
-
-/*
-    Function that clears the current line and moves back to the start of it
-
-    moves the cursor back by the number of characters
-    then clears from that point to the end of the current line
-    and resets the editor state
-*/
-void clearLine() {
-    if(!state.started) return;
-     cursorLeft(state.editor->currentChar);
-     write(STDOUT_FILENO, "\x1b[2K", 4);
-     state.editor->currentChar = 0;
-     state_clearLine(state.editor->currentLine);
-}
-
-/*
     Function for performing a proper shutdown of the terminal
     resets the shell to canonical mode then clears the terminal contents
 */
 void shutdown() {
     if(!state.started) return;
     setCanon();
-    state.started = FALSE;
     clearWhole();
+    state.started = FALSE;
     free_editor(state.editor);
 }
 
