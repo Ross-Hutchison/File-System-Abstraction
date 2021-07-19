@@ -353,8 +353,14 @@ void writeChar(char inpt) {
     }
     if(state.editor->currentChar >= state.editor->lineLength) {
         if(state.editor->currentLine != state.editor->maxLines - 1) {
-            addLine();
-            rerenderOutput();
+            state.editor->currentLine++;
+            state.editor->currentChar = 0;
+            cursorTo(0, state.editor->currentLine);
+            if(state.editor->lines[state.editor->currentLine].len == 0) {
+                write(STDOUT_FILENO, " ", 1);
+                state.editor->cursorX++;
+                cursorLeft(1);
+            }
         }
         else nextChar();
     }
