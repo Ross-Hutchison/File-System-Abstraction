@@ -28,9 +28,9 @@ Fix busted File Allocation Table: Done needs checked
 Fix compiler errors: Done
 Fix memory leaks: TODO (may god have mercy)
 Clean FS code: TODO
-Create Editor control loop for input reading: In progress
-Create in-memory buffer for file contents: Structs created no usage yet
-Set up commands controlling editor: TODO
+Create Editor control loop for input reading: Done
+Create in-memory buffer for file contents: Done
+Set up commands controlling editor: In Progress, ENTER and Delete remaining for basic
 Set up file writing: TODO
 Set up file navigation (move where text is edited): TODO
 Set up file reading and editing: TODO
