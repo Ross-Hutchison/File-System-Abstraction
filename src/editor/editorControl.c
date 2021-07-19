@@ -11,7 +11,7 @@ int main() {
             // printf("%c - %d\n", inpt, inpt);   //DEBGUG PRINT
             if(inpt == CTRL_CHAR(']')) break;
             else if(inpt == CARRIAGE_RETURN) {
-                nextLine();
+                handleNewLine();
             }
             else if(inpt == ESC_CHAR) {
                 char second;

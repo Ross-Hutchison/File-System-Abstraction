@@ -75,13 +75,15 @@ char cursorRight(uint8_t distance);
 char cursorUp(uint16_t distance);
 char cursorDown(uint16_t distance);
 char cursorTo(uint8_t x, uint16_t y);
-void toStart(); //REDUNDANT REMOVE WHEN CURSOR_TO IS COMP
 
 //Directional functions for the terminal cursor, bounded by where characters are
 char nextChar();    //move to the next character in the current line or next line if at end of current and there is a next
 char previousChar(); //move to the previous character in the current line or the previous line if at the start of current and there is a previous
 char nextLine();    //move to the next line if there is one
 char previousLine();    //move to the previous line if there is one
+
+//function that adds a new blank line after the current line and moves to it (if there is space to do so)
+void handleNewLine();
 
 //function for writing a char to output 
 void writeChar(char inpt);

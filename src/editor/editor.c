@@ -313,11 +313,11 @@ char previousChar() {
     reset output by clearing and re-printing 
     make current line the newly "added" line
 */
-void addLine() {
-    if(!state.started) return;
+char addLine() {
+    if(!state.started) return INV;
     uint16_t using = state.editor->inUse;
     uint16_t available = state.editor->maxLines - using;
-    if(available < 1) return;
+    if(available < 1) return ERR;
     else {
         uint16_t curLine = state.editor->currentLine;
         uint16_t lookingAt = curLine + 1;
@@ -329,7 +329,7 @@ void addLine() {
         state_clearLine(lookingAt);
         state.editor->inUse++;
         nextLine();
-        rerenderOutput();
+        return SUC;
     }
     
 }
@@ -354,18 +354,37 @@ void writeChar(char inpt) {
     if(state.editor->currentChar >= state.editor->lineLength) {
         if(state.editor->currentLine != state.editor->maxLines - 1) {
             addLine();
-            // cursorDown(1);
-            // state.editor->currentLine++;
-            // cursorLeft(state.editor->lineLength);
-            // state.editor->currentChar -= state.editor->lineLength;
-            // char blank = ' ';
-            // if(state.editor->lines[state.editor->currentLine].len == 0) {
-            //     write(STDOUT_FILENO, &blank, 1);
-            //     write(STDOUT_FILENO, "\x1b[1D", 4);
-            // }
-            // if(state.editor->currentLine <= state.editor->inUse) state.editor->inUse++; //if currentLine +1 from new line equals the number in use then there's an extra line in use 
+            rerenderOutput();
         }
         else nextChar();
+    }
+}
+
+/*
+    Function for handling a new line being created in the middle of an existing line 
+
+    Starts by storing the current line and character for later use
+    The calls addLine to perform the shifting needed to generate the new blank line 
+    If addLine succeeds then it will shift the data of the old line from the old character onwards down to the next line 
+    It will then update the editor state to reflect this change in line lengths
+    Finally it will re-render the output
+*/
+void handleNewLine() {
+    uint8_t oldCurChar = state.editor->currentChar;
+    uint16_t oldCurLine = state.editor->currentLine;
+
+    if(addLine() == SUC) {
+        uint16_t curLine = state.editor->currentLine;
+        uint8_t moved = 0;
+        uint8_t prevLen = state.editor->lines[oldCurLine].len;
+        for(int i = oldCurChar, j = 0; i < prevLen; i++, j++) {
+            state.editor->lines[curLine].text[j] = state.editor->lines[oldCurLine].text[i];
+            moved++;
+        }
+        state.editor->lines[oldCurLine].len -= moved;
+        state.editor->lines[curLine].len += moved;
+
+        rerenderOutput();
     }
 }
 
