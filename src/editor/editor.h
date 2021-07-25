@@ -55,10 +55,7 @@ typedef struct editor_t {
     LINE_MAX currentLine;
     LINE_MAX maxLines;
     LINE_MAX inUse;
-    LINE_LEN cursorX;
-    LINE_MAX cursorY;
 } editor_t;
-
 
 //function for setting terminal to raw mode MAYBE REMOVE FROM HEADER, NOT TO BE CALLED BY NON_TERMINAL FILES
 void setRaw();

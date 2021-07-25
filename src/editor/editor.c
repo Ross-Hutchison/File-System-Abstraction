@@ -5,6 +5,8 @@ struct state {
     char isRaw;
     char started;
     struct editor_t *editor;
+    LINE_LEN cursorX;
+    LINE_MAX cursorY;
 }state;
 
 
@@ -23,12 +25,12 @@ void handleFatalError(char *msg) {
 */
 char cursorLeft(LINE_LEN distance) {
     if(!state.started || distance == 0) return INV;
-    if(state.editor->cursorX > 0 && distance <= state.editor->cursorX) {
+    if(state.cursorX > 0 && distance <= state.cursorX) {
         int bytes = 4 + MAX_LINE_L_DIGITS;
         char *move = calloc(bytes, sizeof(char));
         snprintf(move, bytes, "\x1b[%dD", distance);
 
-        state.editor->cursorX -= distance;
+        state.cursorX -= distance;
         write(STDIN_FILENO, move, bytes);
         free(move);
         return SUC;
@@ -49,14 +51,14 @@ char cursorLeft(LINE_LEN distance) {
 */
 char cursorRight(LINE_LEN distance) {
     if(!state.started || distance == 0) return INV;
-    int tillEnd = (state.editor->lineLength - 1) - state.editor->cursorX;
+    int tillEnd = (state.editor->lineLength - 1) - state.cursorX;
 
     if(tillEnd > 0 && distance <= tillEnd) {
         int bytes = 4 + MAX_LINE_L_DIGITS;
         char *move = calloc(bytes, sizeof(char));
         snprintf(move, bytes, "\x1b[%dC", distance);
 
-        state.editor->cursorX += distance;
+        state.cursorX += distance;
         write(STDIN_FILENO, move, bytes);
         free(move);
         return SUC;
@@ -75,12 +77,12 @@ char cursorRight(LINE_LEN distance) {
 char cursorUp(LINE_MAX distance) {
     if(!state.started || distance == 0) return INV;
     
-    if(state.editor->cursorY > 0 && distance <= state.editor->cursorY) {
+    if(state.cursorY > 0 && distance <= state.cursorY) {
         int bytes = 4 + MAX_LINE_L_DIGITS;
         char *move = calloc(bytes, sizeof(char));
         snprintf(move, bytes, "\x1b[%dA", distance);
 
-        state.editor->cursorY -= distance;
+        state.cursorY -= distance;
         write(STDIN_FILENO, move, bytes);
         free(move);
         return SUC;
@@ -98,14 +100,14 @@ char cursorUp(LINE_MAX distance) {
 */
 char cursorDown(LINE_MAX distance) {
     if(!state.started || distance == 0) return INV;
-    int toBottom = (state.editor->maxLines - 1) - state.editor->cursorY;
+    int toBottom = (state.editor->maxLines - 1) - state.cursorY;
 
     if(distance > 0 && toBottom > 0 && distance <= toBottom) {
         int bytes = 4 + MAX_LINE_L_DIGITS;
         char *move = calloc(bytes, sizeof(char));
         snprintf(move, bytes, "\x1b[%dB", distance);
 
-        state.editor->cursorY += distance;
+        state.cursorY += distance;
         write(STDIN_FILENO, move, bytes);
         free(move);
         return SUC;
@@ -119,8 +121,8 @@ char cursorDown(LINE_MAX distance) {
     current line and character of the editor
 */
 char cursorTo(LINE_LEN x, LINE_MAX y) {
-    int xDist = (x - state.editor->cursorX);
-    int yDist = (y - state.editor->cursorY);
+    int xDist = (x - state.cursorX);
+    int yDist = (y - state.cursorY);
     char res;
 
     if(xDist < 0) res = cursorLeft( (xDist * -1) );
@@ -198,11 +200,11 @@ void rerenderOutput() {
         line_t current = state.editor->lines[i];
         if(current.len > 0) {
             write(STDOUT_FILENO, current.text, current.len);
-            state.editor->cursorX = current.len;
+            state.cursorX = current.len;
         }
         else if(i >= state.editor->inUse) {
             write(STDOUT_FILENO, "~", 1);
-            state.editor->cursorX = 1;
+            state.cursorX = 1;
         }
     }
     cursorTo(state.editor->currentChar, state.editor->currentLine);
@@ -358,7 +360,7 @@ void writeChar(char inpt) {
         state.editor->lines[curLine].text[curChar] = inpt;
         if(state.editor->currentChar >= state.editor->lines[curLine].len) state.editor->lines[curLine].len++; //if not overwriting a char increase length
         state.editor->currentChar++;
-        state.editor->cursorX++;
+        state.cursorX++;
     }
     if(state.editor->currentChar >= state.editor->lineLength) {
         if(state.editor->currentLine != state.editor->maxLines - 1) {
@@ -368,7 +370,7 @@ void writeChar(char inpt) {
             if(state.editor->currentLine > state.editor->inUse - 1) {
                 state.editor->inUse++;
                 write(STDOUT_FILENO, " ", 1);
-                state.editor->cursorX++;
+                state.cursorX++;
                 cursorLeft(1);
             }
         }
@@ -415,8 +417,6 @@ editor_t *new_editor(LINE_LEN lineLength, LINE_MAX maxLines) {
     editor_t *this = calloc(1, sizeof(struct editor_t));
     this->currentChar = 0;
     this->currentLine = 0;
-    this->cursorX = 0;      //treat start of editor as (0,0) right as x++ and down as y++
-    this->cursorY = 0;  
     this->lineLength = lineLength;
     this->maxLines = maxLines;
     this->inUse = 1;
@@ -527,6 +527,8 @@ void startup(LINE_LEN lineLength, LINE_MAX maxLines) {
     state.started = TRUE;
     state.isRaw = FALSE;
     state.editor = new_editor(lineLength, maxLines);
+    state.cursorX = 0;      //treat start of editor as (0,0) right as x++ and down as y++
+    state.cursorY = 0;  
     setRaw();
     char emptyLine = '~';
     char blank = ' ';
