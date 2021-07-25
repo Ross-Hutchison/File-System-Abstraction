@@ -21,7 +21,7 @@ void handleFatalError(char *msg) {
     then checks if it should move back part of or all of the line
     it performs this update and then modifies the ditor state
 */
-char cursorLeft(uint8_t distance) {
+char cursorLeft(LINE_LEN distance) {
     if(!state.started || distance == 0) return INV;
     if(state.editor->cursorX > 0 && distance <= state.editor->cursorX) {
         int bytes = 4 + MAX_LINE_L_DIGITS;
@@ -47,7 +47,7 @@ char cursorLeft(uint8_t distance) {
     and prints it moving the cursor before updating the state and 
     freeing the allocated string 
 */
-char cursorRight(uint8_t distance) {
+char cursorRight(LINE_LEN distance) {
     if(!state.started || distance == 0) return INV;
     int tillEnd = (state.editor->lineLength - 1) - state.editor->cursorX;
 
@@ -72,7 +72,7 @@ char cursorRight(uint8_t distance) {
     text writing space, if there is and the distance the cursor is to be moved by is within that 
     amount of space then moves the cusor using an ANSI string before updating editor state
 */
-char cursorUp(uint16_t distance) {
+char cursorUp(LINE_MAX distance) {
     if(!state.started || distance == 0) return INV;
     
     if(state.editor->cursorY > 0 && distance <= state.editor->cursorY) {
@@ -96,7 +96,7 @@ char cursorUp(uint16_t distance) {
     text writing space, if there is and the distance the cursor is to be moved by is within that 
     amount of space then moves the cusor with an ANSI string before updating editor state 
 */
-char cursorDown(uint16_t distance) {
+char cursorDown(LINE_MAX distance) {
     if(!state.started || distance == 0) return INV;
     int toBottom = (state.editor->maxLines - 1) - state.editor->cursorY;
 
@@ -118,7 +118,7 @@ char cursorDown(uint16_t distance) {
     to a specific (X,Y) without affecting the 
     current line and character of the editor
 */
-char cursorTo(uint8_t x, uint16_t y) {
+char cursorTo(LINE_LEN x, LINE_MAX y) {
     int xDist = (x - state.editor->cursorX);
     int yDist = (y - state.editor->cursorY);
     char res;
@@ -144,10 +144,9 @@ char cursorTo(uint8_t x, uint16_t y) {
     sets the length of that line to 0 meaning that it will be treated 
     as a blank line
 */
-int state_clearLine(uint16_t toClear) {
+int state_clearLine(LINE_MAX toClear) {
     if(!state.started) return INV;
     else if(toClear < 0 || toClear > state.editor->maxLines) return ERR;
-    // memset(state.editor->lines[toClear].text, '\0', state.editor->lines[toClear].len);
     state.editor->lines[toClear].len = 0;
     return SUC;
 }
@@ -296,7 +295,17 @@ char previousChar() {
     int curChar = state.editor->currentChar;
     int curLine = state.editor->currentLine;
     int len = state.editor->lines[curLine].len;
-    if(curChar > 0 && curChar <= len) {
+    if(curChar == 0) {
+        if(previousLine() == SUC) {
+            LINE_MAX new = state.editor->currentLine;
+            LINE_LEN length = state.editor->lines[new].len - 1;
+            cursorTo(length, new);
+            state.editor->currentChar = length;
+            return SUC;
+        }
+        else return ERR;
+    }
+    else if(curChar > 0 && curChar <= len) {
         cursorLeft(1);
         state.editor->currentChar--;
         return SUC;
@@ -315,13 +324,13 @@ char previousChar() {
 */
 char addLine() {
     if(!state.started) return INV;
-    uint16_t using = state.editor->inUse;
-    uint16_t available = state.editor->maxLines - using;
+    LINE_MAX using = state.editor->inUse;
+    LINE_MAX available = state.editor->maxLines - using;
     if(available < 1) return ERR;
     else {
-        uint16_t curLine = state.editor->currentLine;
-        uint16_t lookingAt = curLine + 1;
-        uint16_t last = using - 1;  // - 1 to get index
+        LINE_MAX curLine = state.editor->currentLine;
+        LINE_MAX lookingAt = curLine + 1;
+        LINE_MAX last = using - 1;  // - 1 to get index
         for(int i = last; i > curLine; i--) {
             strcpy(state.editor->lines[i + 1].text, state.editor->lines[i].text);
             state.editor->lines[i + 1].len = strlen(state.editor->lines[i + 1].text);
@@ -344,8 +353,8 @@ void writeChar(char inpt) {
     if(!state.started) return;
     if(state.editor->currentChar != state.editor->lineLength) {
         write(STDOUT_FILENO, &inpt, 1);
-        uint8_t curChar = state.editor->currentChar;
-        uint16_t curLine = state.editor->currentLine;
+        LINE_LEN curChar = state.editor->currentChar;
+        LINE_MAX curLine = state.editor->currentLine;
         state.editor->lines[curLine].text[curChar] = inpt;
         if(state.editor->currentChar >= state.editor->lines[curLine].len) state.editor->lines[curLine].len++; //if not overwriting a char increase length
         state.editor->currentChar++;
@@ -356,7 +365,8 @@ void writeChar(char inpt) {
             state.editor->currentLine++;
             state.editor->currentChar = 0;
             cursorTo(0, state.editor->currentLine);
-            if(state.editor->lines[state.editor->currentLine].len == 0) {
+            if(state.editor->currentLine > state.editor->inUse - 1) {
+                state.editor->inUse++;
                 write(STDOUT_FILENO, " ", 1);
                 state.editor->cursorX++;
                 cursorLeft(1);
@@ -376,13 +386,13 @@ void writeChar(char inpt) {
     Finally it will re-render the output
 */
 void handleNewLine() {
-    uint8_t oldCurChar = state.editor->currentChar;
-    uint16_t oldCurLine = state.editor->currentLine;
+    LINE_LEN oldCurChar = state.editor->currentChar;
+    LINE_MAX oldCurLine = state.editor->currentLine;
 
     if(addLine() == SUC) {
-        uint16_t curLine = state.editor->currentLine;
-        uint8_t moved = 0;
-        uint8_t prevLen = state.editor->lines[oldCurLine].len;
+        LINE_MAX curLine = state.editor->currentLine;
+        LINE_LEN moved = 0;
+        LINE_LEN prevLen = state.editor->lines[oldCurLine].len;
         for(int i = oldCurChar, j = 0; i < prevLen; i++, j++) {
             state.editor->lines[curLine].text[j] = state.editor->lines[oldCurLine].text[i];
             moved++;
@@ -401,7 +411,7 @@ void handleNewLine() {
     then it allocates memory for the array of lines and for each line will
     assign memory for the internal string
 */
-editor_t *new_editor(uint8_t lineLength, uint16_t maxLines) {
+editor_t *new_editor(LINE_LEN lineLength, LINE_MAX maxLines) {
     editor_t *this = calloc(1, sizeof(struct editor_t));
     this->currentChar = 0;
     this->currentLine = 0;
@@ -513,7 +523,7 @@ void setRaw() {
     sets the terminal to RAW mode and prints the initial terminal ~s 
     at the start of each line
 */
-void startup(uint8_t lineLength, uint16_t maxLines) {
+void startup(LINE_LEN lineLength, LINE_MAX maxLines) {
     state.started = TRUE;
     state.isRaw = FALSE;
     state.editor = new_editor(lineLength, maxLines);

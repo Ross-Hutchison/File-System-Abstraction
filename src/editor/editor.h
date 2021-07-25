@@ -23,6 +23,12 @@
 //Control Sequences and keys
 #define ESC_CHAR '\x1b'
 #define CARRIAGE_RETURN 13
+#define DELETE 127
+
+//typedefs for easy changing of numeric sizes for editor variables
+typedef uint8_t LINE_LEN;
+typedef uint16_t LINE_MAX;
+
 
 /*
     struct for representing a single line
@@ -36,7 +42,7 @@ typedef struct line_t {
 }line_t;
 
 /*
-    struct for representing the editor as a whole
+    struct for representing the actual editor
     contains:
         The pointer to a line (acts as array of lines)
         an unsgned 8-bit int represeting what character is being looked at in the current line
@@ -44,14 +50,15 @@ typedef struct line_t {
 */
 typedef struct editor_t {
     line_t *lines;
-    uint8_t currentChar;
-    uint8_t lineLength;
-    uint16_t currentLine;
-    uint16_t maxLines;
-    uint16_t inUse;
-    uint8_t cursorX;
-    uint16_t cursorY;
+    LINE_LEN currentChar;
+    LINE_LEN lineLength;
+    LINE_MAX currentLine;
+    LINE_MAX maxLines;
+    LINE_MAX inUse;
+    LINE_LEN cursorX;
+    LINE_MAX cursorY;
 } editor_t;
+
 
 //function for setting terminal to raw mode MAYBE REMOVE FROM HEADER, NOT TO BE CALLED BY NON_TERMINAL FILES
 void setRaw();
@@ -63,18 +70,18 @@ void setCanon();
 void handleFatalError(char *msg);
 
 //function called when the editor starts
-void startup(uint8_t lineLength, uint16_t maxLines);
+void startup(LINE_LEN lineLength, LINE_MAX maxLines);
 
 //constructor for a new editor struct
-editor_t *new_editor(uint8_t lineLength, uint16_t maxLines); 
+editor_t *new_editor(LINE_LEN lineLength, LINE_MAX maxLines); 
 void free_editor(editor_t *toFree);
 
 //Directional functions for the terminal cursor, bounded by length of editor space MAYBE REMOVE FROM HEADER, NOT TO BE CALLED BY NON-TERMINAL FILES
-char cursorLeft(uint8_t distance);
-char cursorRight(uint8_t distance);
-char cursorUp(uint16_t distance);
-char cursorDown(uint16_t distance);
-char cursorTo(uint8_t x, uint16_t y);
+char cursorLeft(LINE_LEN distance);
+char cursorRight(LINE_LEN distance);
+char cursorUp(LINE_MAX distance);
+char cursorDown(LINE_MAX distance);
+char cursorTo(LINE_LEN x, LINE_MAX y);
 
 //Directional functions for the terminal cursor, bounded by where characters are
 char nextChar();    //move to the next character in the current line or next line if at end of current and there is a next
@@ -84,6 +91,9 @@ char previousLine();    //move to the previous line if there is one
 
 //function that adds a new blank line after the current line and moves to it (if there is space to do so)
 void handleNewLine();
+
+//function that deletes a charachter or line
+char handleDelete();
 
 //function for writing a char to output 
 void writeChar(char inpt);

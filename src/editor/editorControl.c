@@ -13,6 +13,9 @@ int main() {
             else if(inpt == CARRIAGE_RETURN) {
                 handleNewLine();
             }
+            else if(inpt == DELETE) {
+                // handleDelete();
+            }
             else if(inpt == ESC_CHAR) {
                 char second;
                 char third;
