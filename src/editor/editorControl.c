@@ -1,4 +1,6 @@
 #include "editor.h"
+#include "cursorMovement.h"
+#include "InputOutput.h"
 
 int main() {
     char res;
