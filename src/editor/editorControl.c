@@ -10,7 +10,7 @@ int main() {
         char inpt = '\0';
         res = read(STDIN_FILENO, &inpt, 1);
         if(res > 0) {
-            // printf("%c - %d\n", inpt, inpt);   //DEBGUG PRINT
+            printf("%c - %d\n", inpt, inpt);   //DEBGUG PRINT
             if(inpt == CTRL_CHAR(']')) break;
             else if(inpt == CARRIAGE_RETURN) {
                 handleNewLine();
@@ -47,5 +47,5 @@ int main() {
             else writeChar(inpt);
         }
     }
-    return 0;
+    handleFatalError("Moth closed successfully, have a nice day : )", 0);
 }
