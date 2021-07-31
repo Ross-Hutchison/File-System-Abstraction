@@ -52,6 +52,18 @@ void clearLine() {
 }
 
 /*
+    Function for re-rendering a specific line of the output
+*/
+void rerenderLine(LINE_MAX line) {
+    cursorTo(0, line);
+    write(STDOUT_FILENO, "\x1b[2K", 4);
+    LINE_LEN length = state.editor->lines[line].len;
+    write(STDOUT_FILENO, state.editor->lines[line].text, length);
+    state.cursorX += length;
+    cursorTo(state.editor->currentChar, state.editor->currentLine);
+}
+
+/*
     Function which re-renders the terminal display 
     clears the output which moves us back to the start of the text space 
     then iterates over each in-memory line and prints it
@@ -164,4 +176,92 @@ void handleNewLine() {
 
         rerenderOutput();
     }
+}
+
+/*
+    Function for removing the currently looked at char
+*/
+char removeChar() {
+    LINE_MAX curLine = state.editor->currentLine;
+    LINE_LEN curChar = state.editor->currentChar;
+    LINE_LEN length = state.editor->lines[curLine].len;
+
+    if(curChar <= 0 || curChar > length) handleFatalError("removeChar called with invalid currentChar", INV);
+    else {
+        if(curChar == length) previousChar();
+        else {  //removing a char in middle of liner
+            curChar = --state.editor->currentChar;
+            for(int i = curChar; i < length - 1; i++) {
+                state.editor->lines[curLine].text[i] = state.editor->lines[curLine].text[i + 1];
+            }
+        }
+    }
+    state.editor->lines[curLine].len--;  //removing the last character
+    return SUC;
+}
+
+/*
+    Function for handling the removal of an empty line or joining of two
+
+    line = line curently having parts shifted TO
+    c = point on line that new char is being inserted at
+    c2 = character from next line being moved
+*/
+char removeOrJoinLine() {
+    LINE_LEN curChar = state.editor->currentChar;
+    LINE_MAX curLine = state.editor->currentLine;
+    LINE_LEN srcLen = state.editor->lines[curLine].len;
+    if(curChar != 0 || curLine < 1) return ERR;
+    
+    LINE_MAX line = curLine - 1;
+    LINE_LEN dst = state.editor->lines[line].len;
+    LINE_LEN src = 0;
+    LINE_LEN switched = 0;
+    
+    for(; dst < state.editor->lineLength; dst++) {
+        if(src == srcLen) break;
+        state.editor->lines[line].text[dst] = state.editor->lines[curLine].text[src];
+        switched++;
+        src++;
+    }
+    state.editor->lines[line].len += switched;
+    state.editor->lines[curLine].len -= switched;
+
+    if(state.editor->lines[curLine].len == 0) {
+        state.editor->inUse--;
+        for(int i = curLine; i < state.editor->maxLines - 1; i++) {
+            strcpy(state.editor->lines[i].text, state.editor->lines[i + 1].text);
+            state.editor->lines[i].len= state.editor->lines[i + 1].len;
+        }
+    }
+    else {
+        for(int c2 = src ; c2 < srcLen; c2++) {
+            state.editor->lines[curLine].text[c2 - switched] = state.editor->lines[curLine].text[c2];
+        }
+    }
+    return SUC;
+}
+
+/*
+    Function that handles the delete operation either removing a char 
+    removing a line, or taking everything that fits from one line and putting it on the line above
+*/
+char handleDelete() {
+    LINE_LEN curChar = state.editor->currentChar;
+    LINE_MAX curLine = state.editor->currentLine;
+
+    if(curChar < 0 || curChar > state.editor->lines[curLine].len) return ERR;
+    else if(curChar == 0) { //removing a line or joining two together
+        removeOrJoinLine();
+        rerenderOutput();
+        LINE_LEN endOfPrev = state.editor->lines[curLine - 1].len - 1;
+        cursorTo(endOfPrev, curLine - 1);
+        state.editor->currentChar = endOfPrev;
+        state.editor->currentLine = curLine - 1;
+    }
+    else {  //removing a charachter
+        removeChar();
+        rerenderLine(curLine);
+    }
+    return SUC;
 }

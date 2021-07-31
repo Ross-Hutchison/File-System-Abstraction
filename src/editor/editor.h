@@ -14,6 +14,7 @@
 #define TRUE 1
 #define FALSE 0
 #define ERR -1
+#define FAT -2
 #define SUC 0
 #define INV 1
 #define MAX_LINE_L_DIGITS 2

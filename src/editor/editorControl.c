@@ -1,6 +1,7 @@
 #include "editor.h"
 #include "cursorMovement.h"
 #include "InputOutput.h"
+#include <sys/poll.h>
 
 int main() {
     char res;
@@ -22,7 +23,7 @@ int main() {
                         handleNewLine();
                     }
                     else if(inpt == DELETE) {
-                        // handleDelete();
+                        handleDelete();
                     }
                     else if(inpt == ESC_CHAR) {
                         char second;

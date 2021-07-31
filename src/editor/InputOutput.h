@@ -22,7 +22,12 @@ void handleNewLine();
 //Function that clears and re-prints the whole of the output 
 void rerenderOutput();
 
+//Function for rerendering a specific line of the output 
+void rerenderLine(LINE_MAX line);
+
 //function that deletes a charachter or line
 char handleDelete();
+char removeChar();  //removes a character replacing it with a blank space and decementing the line's length 
+char removeOrJoinLine();  //removes an empty line and shifts all lower lines up by one
 
 #endif
