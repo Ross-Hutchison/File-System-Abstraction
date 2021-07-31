@@ -21,6 +21,7 @@
 #define MAX_LINES_DIGITS 2 //number of digits of the max line length
 #define CTRL_CHAR(c) ((c) & 0x1f) //Not mine - https://viewsourcecode.org/snaptoken/kilo/03.rawInputAndOutput.html
 #define EXIT_MSG_LEN 50
+#define MAX_FILENAME_LEN 100
 
 //Control Sequences and keys
 #define ESC_CHAR '\x1b'
@@ -73,6 +74,8 @@ typedef struct state_t {
     LINE_MAX cursorY;
     char *exitMsg;
     char exitCode;
+    char *openFile;
+    FILE *storage;
 } state_t;
 
 //function for setting terminal to raw mode MAYBE REMOVE FROM HEADER, NOT TO BE CALLED BY NON_TERMINAL FILES

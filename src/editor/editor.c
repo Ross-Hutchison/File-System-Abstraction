@@ -122,6 +122,7 @@ void shutdown() {
     write(STDOUT_FILENO, output, outBytes);
     free_editor(state.editor);
     free(state.exitMsg);
+    free(state.openFile);
 }
 
 /*
@@ -138,6 +139,7 @@ void startup(LINE_LEN lineLength, LINE_MAX maxLines) {
     state.cursorY = 0;
     state.exitMsg = calloc(EXIT_MSG_LEN + 1, sizeof(char));
     state.exitCode = 0;
+    state.openFile = calloc(MAX_FILENAME_LEN + 1, sizeof(char));
     setRaw();
     char emptyLine = '~';
     char blank = ' ';

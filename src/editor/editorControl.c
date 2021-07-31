@@ -25,6 +25,9 @@ int main() {
                     else if(inpt == DELETE) {
                         handleDelete();
                     }
+                    else if(inpt == CTRL_CHAR('S')){
+                        saveFile();
+                    }
                     else if(inpt == ESC_CHAR) {
                         char second;
                         char third;
@@ -57,5 +60,14 @@ int main() {
         }
         else handleFatalError("Control loop has encountered a fatal error", 1);
     }
+    clearWhole();
+    setCanon();
+    printf("Would you like to save the file? (y/n)\n");
+    fgets(&res, 2, stdin);
+    while(res != 'y' && res != 'n') {
+        printf("invalid input, please enter y(es) or n(o)");
+        fgets(&res, 2, stdin);
+    }
+    if(res == 'y') saveFile();
     handleFatalError("Moth closed successfully, have a nice day : )", 0);
 }

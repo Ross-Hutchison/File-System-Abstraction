@@ -30,4 +30,7 @@ char handleDelete();
 char removeChar();  //removes a character replacing it with a blank space and decementing the line's length 
 char removeOrJoinLine();  //removes an empty line and shifts all lower lines up by one
 
+//function for saving the file
+char saveFile();
+
 #endif

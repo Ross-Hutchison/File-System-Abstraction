@@ -265,3 +265,63 @@ char handleDelete() {
     }
     return SUC;
 }
+
+
+/*
+    Function that uses UI to get the name to input into the file 
+*/
+void getFileName() {
+    char* name = calloc(MAX_FILENAME_LEN + 1, sizeof(char));
+    printf("What name would you like to save the current file under?\n");
+    while(TRUE) {
+        fgets(name, MAX_FILENAME_LEN, stdin);
+        state.storage = fopen(name, "w");
+        if(state.storage != NULL) {
+            strcpy(state.openFile, name);
+            break;
+        }
+        else perror("Invalid name try again");
+    }
+    free(name);
+}
+
+/*
+    Function for writing the contents of the file to the 
+    designated storage
+
+    checks there is a designated storage file and if so 
+    redirects standard output to that file before re-rendering the output 
+    which will therefore print into the file 
+
+    after the output has been written resets stdout to what it was.
+*/
+char writeContents() {
+    if(strcmp(state.openFile, "") == SUC) return ERR; //no set storage file to write to
+    else {
+        for(int i = 0; i < state.editor->inUse; i++) {
+            fwrite(state.editor->lines[i].text, state.editor->lines[i].len, 1, state.storage);
+            fwrite("\n", 1, 1, state.storage);
+        }
+        fflush(state.storage);
+    }
+
+    return SUC;
+}
+
+/*
+    Function that is called to save the curent file being created
+
+    if the file has no name then the output screen will be cleared and the system will enter 
+    canonical mode to allow for user input
+*/
+char saveFile() { 
+    if(strcmp(state.openFile, "") == SUC) {
+        clearWhole();
+        setCanon(); //enter canonical mode for UI
+        getFileName();
+    }
+    char success = writeContents();
+    setRaw();
+    rerenderOutput();
+    return success;
+}

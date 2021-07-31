@@ -26,7 +26,7 @@ halfClean:
 	rm -r *.o
 
 clean:
-	rm -r *.o moth test.txt
+	rm -r *.o moth test*.txt
 
 clearView:
 	clear
