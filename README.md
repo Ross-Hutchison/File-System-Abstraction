@@ -30,10 +30,9 @@ Fix memory leaks: TODO (may god have mercy)
 Clean FS code: TODO
 Create Editor control loop for input reading: Done
 Create in-memory buffer for file contents: Done
-Set up commands controlling editor: In Progress, ENTER and Delete remaining for basic
-Set up file writing: TODO
-Set up file navigation (move where text is edited): TODO
-Set up file reading and editing: TODO
+Set up commands controlling editor: Done
+Set up file writing: Done
+Set up file reading and editing: Done
 Set up child mode (take CLAs and return instead of writing): TODO
 Set up text UI for FS: TODO
 Set up FS executing editor in second shell as child): TODO
@@ -41,6 +40,7 @@ Set up handling of child return data: TODO
 
 Possible Extensions
 -------------------------------------------
-Improve directory structure
+Improve directory structure for file system
+Set up file system navigation for editor (actual file system not abstraction)
 
 
