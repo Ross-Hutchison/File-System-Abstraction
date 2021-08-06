@@ -3,9 +3,12 @@
 #include "InputOutput.h"
 #include <sys/poll.h>
 
-int main() {
+int main(int argc, char **argv) {
     char res;
     startup(10, 10);
+    if(argc > 1) {
+        if(setOpenFile(argv[1]) == ERR) handleFatalError("Invalid filename specified", INV);
+    }
     char nfds = 1;
     struct pollfd pfds[nfds];
     pfds[0].fd = STDIN_FILENO;
@@ -60,14 +63,6 @@ int main() {
         }
         else handleFatalError("Control loop has encountered a fatal error", 1);
     }
-    clearWhole();
-    setCanon();
-    printf("Would you like to save the file? (y/n)\n");
-    fgets(&res, 2, stdin);
-    while(res != 'y' && res != 'n') {
-        printf("invalid input, please enter y(es) or n(o)");
-        fgets(&res, 2, stdin);
-    }
-    if(res == 'y') saveFile();
+    saveFile();
     handleFatalError("Moth closed successfully, have a nice day : )", 0);
 }

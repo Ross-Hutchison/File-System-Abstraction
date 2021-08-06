@@ -14,7 +14,7 @@ mem: all clearView memoryCheck clearView memCheckOutp clean
 # Keywords for creating different execution types
 
 memoryCheck:
-	valgrind --log-file="test.txt" --leak-check=full --track-origins=yes --show-leak-kinds=all -s ./moth
+	valgrind --log-file="test.txt" --leak-check=full --track-origins=yes --show-leak-kinds=all -s ./moth a.txt
 
 memCheckOutp:
 	cat test.txt

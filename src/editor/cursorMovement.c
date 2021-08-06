@@ -186,7 +186,7 @@ char nextChar() {
     int curLine = state.editor->currentLine;
     int lineUsed = state.editor->lines[curLine].len; //remove 1 for index, keep one so that it includes next free char
 
-    if(curChar == state.editor->lineLength - 1) {
+    if(curChar == lineUsed) {
         if(nextLine() == SUC) {
             cursorTo(0, state.editor->currentLine);
             state.editor->currentChar = 0;
@@ -215,7 +215,8 @@ char previousChar() {
     if(curChar == 0) {
         if(previousLine() == SUC) {
             LINE_MAX new = state.editor->currentLine;
-            LINE_LEN length = state.editor->lines[new].len - 1;
+            LINE_LEN length = state.editor->lines[new].len;
+            if(length != 0) length--; //if the line is not empty remove 1 to get the index
             cursorTo(length, new);
             state.editor->currentChar = length;
             return SUC;

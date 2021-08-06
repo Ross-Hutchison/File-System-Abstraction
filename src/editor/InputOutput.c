@@ -218,7 +218,7 @@ char removeOrJoinLine() {
     LINE_LEN src = 0;
     LINE_LEN switched = 0;
     
-    for(; dst < state.editor->lineLength; dst++) {
+    for(; dst < state.editor->lineLength; dst++) { //move the data from the current line to the previous
         if(src == srcLen) break;
         state.editor->lines[line].text[dst] = state.editor->lines[curLine].text[src];
         switched++;
@@ -252,12 +252,14 @@ char handleDelete() {
 
     if(curChar < 0 || curChar > state.editor->lines[curLine].len) return ERR;
     else if(curChar == 0) { //removing a line or joining two together
-        removeOrJoinLine();
-        rerenderOutput();
-        LINE_LEN endOfPrev = state.editor->lines[curLine - 1].len - 1;
-        cursorTo(endOfPrev, curLine - 1);
-        state.editor->currentChar = endOfPrev;
-        state.editor->currentLine = curLine - 1;
+        if(removeOrJoinLine() == SUC) {
+            rerenderOutput();
+            LINE_LEN endOfPrev = 0;
+            if(state.editor->lines[curLine - 1].len != 0) endOfPrev = state.editor->lines[curLine - 1].len - 1;
+            cursorTo(endOfPrev, curLine - 1);
+            state.editor->currentChar = endOfPrev;
+            state.editor->currentLine = curLine - 1;
+        }
     }
     else {  //removing a charachter
         removeChar();
@@ -266,18 +268,69 @@ char handleDelete() {
     return SUC;
 }
 
+/*
+    Function for checking if the storage file 
+    needs to be loaded and if so loading it into memory
+*/
+char loadIfNeeded() {
+    if(strcmp(state.openFile, "") == SUC) return ERR;
+    int len;
+    fseek(state.storage, 0, SEEK_END);
+    len = ftell(state.storage);
+    rewind(state.storage);
+    if(len != 0) {
+        char read = ' ';
+        int res = 0;
+        state.editor->inUse = 0;
+        for(int i = 0; i < state.editor->maxLines; i++) {
+            for(int j = 0; j <= state.editor->lineLength; j++) {
+                res = fread(&read, 1, 1, state.storage);
+                if(res == 0 || read == '\n' || read == EOF) break;
+                state.editor->lines[i].text[j] = read;
+                state.editor->lines[i].len++;
+            }
+            state.editor->inUse++;
+            if(res == 0) break;
+        }
+        if(state.editor->inUse == 0) state.editor->inUse++;
+        rerenderOutput();
+        return SUC;
+    }
+    else return SUC;
+}
+
+/*
+    Function that sets the state valeus related to which file 
+    is being read and/or written to
+
+    checks if the file exists and if not creates it
+    then checks if the file contains anymkbthvrfxws
+
+    Contributors - P sevastyanova 
+*/
+char setOpenFile(char *name) {
+    state.storage = fopen(name, "a+");
+    if(state.storage != NULL) {
+        strcpy(state.openFile, name);
+        loadIfNeeded(); //if file is valid then check if it exists
+        return SUC;
+    }
+    else return ERR;
+}
+
 
 /*
     Function that uses UI to get the name to input into the file 
 */
 void getFileName() {
+    if(state.isRaw) setCanon();
     char* name = calloc(MAX_FILENAME_LEN + 1, sizeof(char));
-    printf("What name would you like to save the current file under?\n");
+    write(STDOUT_FILENO, "What name would you like to save the current file under?\n", 57);
     while(TRUE) {
         fgets(name, MAX_FILENAME_LEN, stdin);
-        state.storage = fopen(name, "w");
-        if(state.storage != NULL) {
-            strcpy(state.openFile, name);
+        int len = strlen(name);
+        if(len > 1 && name[len - 1] == '\n') name[len - 1] = '\0';
+        if(setOpenFile(name) == SUC) {
             break;
         }
         else perror("Invalid name try again");
@@ -298,10 +351,13 @@ void getFileName() {
 char writeContents() {
     if(strcmp(state.openFile, "") == SUC) return ERR; //no set storage file to write to
     else {
-        for(int i = 0; i < state.editor->inUse; i++) {
+        truncate(state.openFile, 0);
+        LINE_MAX using = state.editor->inUse;
+        for(int i = 0; i < using - 1; i++) {
             fwrite(state.editor->lines[i].text, state.editor->lines[i].len, 1, state.storage);
             fwrite("\n", 1, 1, state.storage);
         }
+        fwrite(state.editor->lines[using - 1].text, state.editor->lines[using - 1].len, 1, state.storage);
         fflush(state.storage);
     }
 
@@ -315,13 +371,27 @@ char writeContents() {
     canonical mode to allow for user input
 */
 char saveFile() { 
-    if(strcmp(state.openFile, "") == SUC) {
-        clearWhole();
+    clearWhole();
+    char res = ' ';
+    write(STDOUT_FILENO, "Would you like to save ? y(es)/n(o)\n", 36);
+    write(STDOUT_FILENO, "\x1b[35D", 6);
+    while(TRUE) {
+        read(STDIN_FILENO, &res, 2);
+        if(res == 'y' || res == 'n') break;
+    }
+    if(res == 'y') {
+        if(strcmp(state.openFile, "") == SUC) {
         setCanon(); //enter canonical mode for UI
         getFileName();
     }
-    char success = writeContents();
-    setRaw();
-    rerenderOutput();
-    return success;
+        char success = writeContents();
+        setRaw();
+        rerenderOutput();
+        return success;
+    }
+    else {
+        rerenderOutput();
+        return SUC;
+    }
+    
 }

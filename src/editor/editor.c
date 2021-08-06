@@ -5,7 +5,7 @@ state_t state;
 
 void handleFatalError(char *msg, int status) {
     memcpy(state.exitMsg, msg, EXIT_MSG_LEN);
-    state.exitMsg[EXIT_MSG_LEN + 1] = '\0';
+    state.exitMsg[EXIT_MSG_LEN] = '\0';
     state.exitCode = status;
     exit(status);
 }
@@ -123,6 +123,8 @@ void shutdown() {
     free_editor(state.editor);
     free(state.exitMsg);
     free(state.openFile);
+    free(output);
+    if(state.storage != NULL) fclose(state.storage);
 }
 
 /*

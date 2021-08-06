@@ -3,6 +3,7 @@
 
 #include "editor.h"
 #include "cursorMovement.h"
+#include <fcntl.h>
 
 //function for writing a char to output 
 void writeChar(char inpt);
@@ -29,6 +30,12 @@ void rerenderLine(LINE_MAX line);
 char handleDelete();
 char removeChar();  //removes a character replacing it with a blank space and decementing the line's length 
 char removeOrJoinLine();  //removes an empty line and shifts all lower lines up by one
+
+//Function for checking if a file needs to be loaded (and loading if so)
+char loadIfNeeded();
+
+//function for setting the state data on the file being written to and/or read from
+char setOpenFile(char * name);
 
 //function for saving the file
 char saveFile();
