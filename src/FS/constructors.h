@@ -36,9 +36,9 @@ typedef struct volumeBootRecord {
 
 //a struct to define the structure of the File Allocation Table
 typedef struct fatTable {
-    u_char table[FAT_TABLE_SIZE]; //char is a single byte
-    int nextFreeSlot; //used to keep track of where the next free index is
-    int storing;
+    uint8_t table[FAT_TABLE_SIZE]; //char is a single byte
+    uint8_t nextFreeSlot; //used to keep track of where the next free index is
+    uint8_t storing;
 }fatTable;
 
 //struct to define the structure of the root directory

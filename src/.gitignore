@@ -1,2 +1,9 @@
 *.o
+moth
 test
+check.c
+*.core.*
+*.core
+*.txt
+.swp
+.gitignore

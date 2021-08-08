@@ -58,9 +58,9 @@ int writeFAT(int fd) {
     int offsetLocation = lseek(fd, FAT_REGION_OFST, SEEK_SET);
     if (offsetLocation == ERR) return handleError_p("writeFAT - could not shift fd");
 
-    char *fat = table->table;
-    for (int i = 0; i <= FAT_TABLE_SIZE; i++) {
-        char current = fat[i];
+    for (int i = 0; i < FAT_TABLE_SIZE; i++) {
+        char current =  table->table[i];
+        printf("writing value %d (%d) to the on disk FAT\n", i, current);
         if (write(fd, &current, entryBytes) == ERR) return handleError_p("writeFAT - couldn't write index");
     }
 
@@ -102,7 +102,7 @@ int writeDataRegion(int fd) {
     int offsetLocation = lseek(fd, DATA_REGION_OFST, SEEK_SET);
     if (offsetLocation == ERR) return handleError_p("writeDataRegion - could not move to data region offset");
 
-    for (int i = FIRST_FAT_INDEX; i < MAX_ENTRIES; i++) {
+    for (int i = 0; i < MAX_ENTRIES; i++) {
         block *current = storage->blocks[i];
         if (write(fd, &(current->data), BLOCK_SIZE) == ERR)
             return handleError_p("writeDataRegion - could not write block");
@@ -205,21 +205,20 @@ int load_fat() {
 
     //move the pointer to the offset fot the volume boot
     if (lseek(filedes, FAT_REGION_OFST, SEEK_SET) == ERR)
-        return handleError_p(
-                "load_fat - could not move to FAT offset");
+        return handleError_p("load_fat - could not move to FAT offset");
 
     if (table == NULL) table = new_FAT();
 
     char bytes = 1;
     char current;
 
-    for (int i = FIRST_FAT_INDEX; i <= LAST_FAT_INDEX; i++) {
+    for (int i = 0; i < FAT_TABLE_SIZE; i++) {
         if (read(filedes, &current, bytes) == ERR) return handleError_p("load_fat - cannot read fat index");
         table->table[i] = current;
 
-        //find the first free index (stays as -1 (ERR) if one does not exist)
-        if (current == '0') {
-            if (table->nextFreeSlot == -1 || table->nextFreeSlot > i) table->nextFreeSlot = i;
+        //find the first free index (stays as CHAIN_END if one does not exist)
+        if (current == FREE) {
+            if (table->nextFreeSlot > LAST_FAT_INDEX || table->nextFreeSlot > i) table->nextFreeSlot = i;
         } else table->storing++;  //if index is not free then it is full, plus the counter
     }
 
@@ -377,7 +376,7 @@ int mount_fs(char *store_name) {
     int32_t ident;
     int32_t bs;
     int32_t mf;
-    size_t readOut;
+    ssize_t readOut;
 
     if ((readOut = read(fd, &ident, vmbBytes)) == ERR) return handleError_p("mount_fs - cannot read from file");
     if (readOut == ERR) return handleError_p("mount_fs - could not read boot record");
@@ -450,9 +449,9 @@ int fat_findFreeIndex(int iterateFrom) {
 
     for (int i = iterateFrom; i <= LAST_FAT_INDEX; i++) {
         char current = table->table[i];
-        if (current == '0') return i;
+        if (current == FREE) return i;
     }
-    return ERR;
+    return CHAIN_END;
 }
 
 /*
@@ -522,12 +521,12 @@ int recursiveFATClear(int index) {
     if (index < FIRST_FAT_INDEX || index > LAST_FAT_INDEX)
         return handleError("cannot clear FAT index - index out of bounds");
 
-    else if (table->table[index] == '\0') {  // base case
-        table->table[index] = '0';
+    else if (table->table[index] == CHAIN_END) {  // base case
+        table->table[index] = FREE;
         table->storing--;   //decrease the count of full blocks
         int res = writeBlock(index, "");
         if (res == ERR) {
-            table->table[index] = '\0';  //undo deletion on error
+            table->table[index] = CHAIN_END;  //undo deletion on error
             table->storing++;   //undo count decrease on error
         }
         if (index < table->nextFreeSlot)
@@ -538,7 +537,7 @@ int recursiveFATClear(int index) {
         char next = table->table[index]; //take next block address from FAT
         int res = recursiveFATClear(next);
         if (res != ERR) {
-            table->table[index] = '0';   //if last was cleared then clear this
+            table->table[index] = FREE;   //if last was cleared then clear this
             table->storing--; //decrease the count of taken blocks
             int wrote = writeBlock(index, "");
             if (wrote == ERR) {
@@ -666,11 +665,10 @@ int fs_create(char *name) {
     if ((dir_search(name)) == ERR) {
 
         int16_t index;
-        if ((index = table->nextFreeSlot) == ERR) return handleError("cannot create file - no free space in FAT");
-        table->table[index] = '\0';
+        if ((index = table->nextFreeSlot) > LAST_FAT_INDEX) return handleError("cannot create file - no free space in FAT");
+        table->table[index] = CHAIN_END;
         table->storing++; //one less free index in FAT
-        table->nextFreeSlot = fat_findFreeIndex(
-                index); //as we added to the first free index, the next free index must be larger
+        table->nextFreeSlot = fat_findFreeIndex(index); //as we added to the first free index, the next free index must be larger
 
         file *new = new_file(name, index, 0);
 
@@ -744,9 +742,8 @@ int fs_open(char *name, int mode) {
     int fileIndex = dir_search(name);
     if (fileIndex == ERR) return handleError("cannot open file - file not found");
 
-    //create a new description and add it to the
+    //create a new descriptor and add it to the list of open file descriptors
     file *file = rootDir->files[fileIndex];
-    int block = file->fatIndex; //each FAT index represents a block
 
     //just opened files start with their file pointer at the start of the file
     descriptor *dec = new_descriptor(file, mode, 0);
@@ -762,19 +759,19 @@ int fs_open(char *name, int mode) {
  * either way find the space left in the block and assign in to the variable
  */
 size_t nextNonFullBlock(int *currentFatIndex, block **store) {
-    size_t spaceLeft = 0;
-    char currentFatValue;
+    ssize_t spaceLeft = 0;
+    uint8_t currentFatValue;
 
     while (spaceLeft == 0) {
         currentFatValue = table->table[*currentFatIndex]; //take the value from the FAT at current index
 
-        if (currentFatValue == '\0') {   //if end of chain
-            if (table->nextFreeSlot == -1) return handleError("could not finish writing - no file space remaining");
+        if (currentFatValue == CHAIN_END) {   //if end of chain
+            if (table->nextFreeSlot > LAST_FAT_INDEX) return handleError("could not finish writing - no file space remaining");
             else {
 
                 table->table[*currentFatIndex] = table->nextFreeSlot;    //assign old end of chain to point to new
                 *currentFatIndex = table->nextFreeSlot;  //assign the current index to the newest FAT entry
-                table->table[*currentFatIndex] = '\0';   //make it the end of the chain
+                table->table[*currentFatIndex] = CHAIN_END;   //make it the end of the chain
                 *store = storage->blocks[*currentFatIndex];   //move to this block
                 table->nextFreeSlot = fat_findFreeIndex(*currentFatIndex);   //find the next free index in FAT
 
@@ -819,7 +816,7 @@ int fs_write(int fd, void *buffer, size_t nbytes) {
     if (desc->mode != O_WRONLY) return handleError("cannot write file - file not open for writing");
 
     //now need to write from the buffer to the first dataBlock
-    int writenTotal = 0; //the total number of bytes writen this call
+    size_t writenTotal = 0; //the total number of bytes writen this call
 
     //gets the file from the descriptor and the start of it's fat chain
     file *writeTo = desc->represents;
@@ -830,24 +827,23 @@ int fs_write(int fd, void *buffer, size_t nbytes) {
 
     //checks how full this data block is - this will determine how much we can write
     size_t dataSize = strlen(store->data);
-    size_t spaceLeft = BLOCK_SIZE - dataSize;
+    int spaceLeft = BLOCK_SIZE - dataSize;
 
     //if space is 0 tries to move to the next block owned by this file
     if (spaceLeft == 0) spaceLeft = nextNonFullBlock(&currentIndex, &store);
-    if (spaceLeft == -1) return writenTotal;
+    if (spaceLeft == ERR) return writenTotal;
 
     size_t blockCounter = dataSize; //counter for writing the current block byte
     size_t bufferCounter = dataSize; //counter for writing the current buffer byte
 
     while (writenTotal != nbytes) {
+        if(store->data[blockCounter] == '\0') desc->represents->size++; //if writing over empty char increase file size
         store->data[blockCounter] = writeData[bufferCounter];
         writenTotal++;
         desc->fp++;
-        if(store->data[blockCounter] == '\0') desc->represents->size++;
         spaceLeft--;
         blockCounter++;
         bufferCounter++;
-
 
         if (spaceLeft == 0) spaceLeft = nextNonFullBlock(&currentIndex, &store);
         if (spaceLeft == -1) break;  //stop writing if there is no space
@@ -865,8 +861,8 @@ int fs_write(int fd, void *buffer, size_t nbytes) {
  * if the end of the chain has been reached
  */
 block *nextOwnedBlock(int *currentIndex) {
-    char current = table->table[*currentIndex];
-    if(current == '\0') {
+    uint8_t current = table->table[*currentIndex];
+    if(current == CHAIN_END) {
         fprintf(stderr, "reached end of chain for this file\n");
         usleep(SLEEP_USECS);
         return NULL;
@@ -890,7 +886,7 @@ block *nextOwnedBlock(int *currentIndex) {
 */
 off_t movePointer(off_t offset, block *current, off_t fp) {
     if(current == NULL) return handleError("cannot move pointer - invalid block received");
-    size_t holds = BLOCK_SIZE;
+    ssize_t holds = BLOCK_SIZE;
     off_t remaining = offset - fp;
     int read = 0;
 
@@ -955,7 +951,7 @@ void printDirectory() {
             file *current = rootDir->files[i];
             printf("file %d\n", i + 1);
             printf("name: %s\n", current->name);
-            printf("index: %d\n", current->fatIndex);
+            printf("starting index: %d\n", current->fatIndex);
             printf("size: %d\n", current->size);
         }
     }
@@ -1019,7 +1015,7 @@ void printFileDescriptors() {
             printf("starting at FAT index %d\n", current->represents->fatIndex);
             printf("and of size %d\n", current->represents->size);
             printf("opened with mode %d\n", current->mode);
-            printf("with file pointer at byte %d of the disk file\n", current->fp);
+            printf("with file pointer at byte %ld of the disk file\n", current->fp);
             printf("--------------------\n");
         }
     }
